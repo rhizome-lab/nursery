@@ -27,11 +27,11 @@ strategy = "gms2"             # Extraction strategy
 assets = "./assets/raw"       # Output directory for extracted assets
 ```
 
-### Sap
+### Dew
 
 ```toml
-[sap]
-pipeline = "src/pipelines/assets.sap"  # Pipeline definition file
+[dew]
+pipeline = "src/pipelines/assets.dew"  # Pipeline definition file
 ```
 
 ### Lotus

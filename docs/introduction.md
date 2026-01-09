@@ -6,7 +6,7 @@ Nursery is the orchestration layer for the Rhizome ecosystem.
 
 The Rhizome ecosystem contains many tools:
 - **Winnow** - Legacy software lifting
-- **Sap** - Expression language and pipelines
+- **Dew** - Minimal expression language
 - **Lotus** - Persistent world runtime
 - **Resin** - Procedural media generation
 - **Moss** - Code intelligence

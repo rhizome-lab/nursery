@@ -21,8 +21,8 @@ source = "./dump/game.exe"
 strategy = "gms2"
 assets = "./assets/raw"
 
-[sap]
-pipeline = "src/pipelines/assets.sap"
+[dew]
+pipeline = "src/pipelines/assets.dew"
 
 [lotus]
 target = "web-wasm"

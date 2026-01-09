@@ -10,7 +10,7 @@ Nursery is the orchestration layer for the Rhizome ecosystem. It provides projec
 
 - **`rhizome.toml`**: The manifest file that defines how Rhizome tools compose for a specific project
 - **Seeds**: Starter templates for common project types (archaeology, creation, lab)
-- **Orchestration**: Coordinating multiple tools (winnow, sap, lotus, etc.) based on the manifest
+- **Orchestration**: Coordinating multiple tools (winnow, dew, lotus, etc.) based on the manifest
 
 ### The Manifest
 
@@ -25,8 +25,8 @@ source = "./dump/game.exe"
 strategy = "gms2"
 assets = "./assets/raw"
 
-[sap]
-pipeline = "src/pipelines/assets.sap"
+[dew]
+pipeline = "src/pipelines/assets.dew"
 
 [lotus]
 target = "web-wasm"
@@ -38,7 +38,7 @@ The manifest is the single source of truth for how tools interact in a project.
 ### Seeds
 
 Pre-configured starter templates:
-- **seed-archaeology**: For lifting legacy games (winnow → sap → lotus)
+- **seed-archaeology**: For lifting legacy games (winnow → dew → lotus)
 - **seed-creation**: For new lotus projects
 - **seed-lab**: Full ecosystem sandbox
 
