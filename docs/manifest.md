@@ -18,10 +18,10 @@ Required fields:
 
 Each Rhizome tool can have its own section. Only include sections for tools you're using.
 
-### Winnow
+### Siphon
 
 ```toml
-[winnow]
+[siphon]
 source = "./dump/game.exe"    # Path to legacy binary
 strategy = "gms2"             # Extraction strategy
 assets = "./assets/raw"       # Output directory for extracted assets
@@ -51,4 +51,4 @@ assets = "./assets"    # Asset generation output
 
 ## Dependency Resolution
 
-Nursery automatically determines tool execution order based on declared inputs and outputs. For example, if `lotus.assets` points to `winnow.assets`, Winnow runs first.
+Nursery automatically determines tool execution order based on declared inputs and outputs. For example, if `lotus.assets` points to `siphon.assets`, Siphon runs first.

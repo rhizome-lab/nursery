@@ -13,7 +13,7 @@ nursery new my-remake --seed archaeology
 ```
 
 Includes:
-- Winnow configuration for asset extraction
+- Siphon configuration for asset extraction
 - Sap pipeline for asset processing
 - Lotus runtime for playback
 

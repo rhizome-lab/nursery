@@ -5,7 +5,7 @@ Nursery is the orchestration layer for the Rhizome ecosystem.
 ## The Problem
 
 The Rhizome ecosystem contains many tools:
-- **Winnow** - Legacy software lifting
+- **Siphon** - Legacy software lifting
 - **Dew** - Minimal expression language
 - **Lotus** - Persistent world runtime
 - **Resin** - Procedural media generation
@@ -23,7 +23,7 @@ Instead of memorizing arguments for multiple tools, you write one `rhizome.toml`
 name = "my-project"
 version = "0.1.0"
 
-[winnow]
+[siphon]
 source = "./dump/game.exe"
 strategy = "gms2"
 assets = "./assets/raw"
@@ -39,7 +39,7 @@ Nursery reads this manifest and coordinates the tools. You don't need to remembe
 
 To reduce the "where do I start?" friction, Nursery provides **Seeds**—pre-configured starter templates:
 
-- **seed-archaeology** - For lifting legacy games (winnow → lotus)
+- **seed-archaeology** - For lifting legacy games (siphon → lotus)
 - **seed-creation** - For new Lotus projects from scratch
 - **seed-lab** - Full ecosystem sandbox with all tools configured
 
