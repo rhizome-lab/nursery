@@ -14,3 +14,4 @@ path = "src/main.rs"
 rhizome-nursery-core.workspace = true
 rhizome-nursery-seed.workspace = true
 clap = { version = "4", features = ["derive"] }
+notify = "8"

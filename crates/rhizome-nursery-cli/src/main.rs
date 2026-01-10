@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use rhizome_nursery_core::{
     generate_configs, merge_to_manifest, preview_configs, pull_configs, CliSchemaProvider,
     Manifest, SchemaProvider,
@@ -9,6 +10,8 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::sync::mpsc;
+use std::time::Duration;
 
 #[derive(Parser)]
 #[command(name = "nursery")]
@@ -33,6 +36,10 @@ enum Command {
         /// Show what would change without writing
         #[arg(long)]
         diff: bool,
+
+        /// Watch for changes and regenerate
+        #[arg(long)]
+        watch: bool,
     },
 
     /// Sync configs between nursery.toml and tool config files
@@ -107,7 +114,14 @@ fn main() -> ExitCode {
             manifest,
             check,
             diff,
-        } => cmd_generate(&manifest, check, diff),
+            watch,
+        } => {
+            if watch {
+                cmd_watch(&manifest)
+            } else {
+                cmd_generate(&manifest, check, diff)
+            }
+        }
         Command::Config { action } => match action {
             ConfigAction::Push { manifest } => cmd_generate(&manifest, false, false),
             ConfigAction::Pull {
@@ -231,6 +245,64 @@ fn print_diff(old: &Option<String>, new: &str) {
     for line in &new_lines {
         if !old_lines.contains(line) {
             println!("+{line}");
+        }
+    }
+}
+
+fn cmd_watch(path: &PathBuf) -> ExitCode {
+    // Run initial generation
+    println!("watching: {}", path.display());
+    if cmd_generate(path, false, false) == ExitCode::FAILURE {
+        eprintln!("initial generation failed, continuing to watch...");
+    }
+
+    let (tx, rx) = mpsc::channel();
+
+    let mut watcher = match RecommendedWatcher::new(
+        move |res| {
+            if let Ok(event) = res {
+                let _ = tx.send(event);
+            }
+        },
+        Config::default().with_poll_interval(Duration::from_secs(1)),
+    ) {
+        Ok(w) => w,
+        Err(e) => {
+            eprintln!("error: failed to create watcher: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    // Watch the manifest file
+    if let Err(e) = watcher.watch(path, RecursiveMode::NonRecursive) {
+        eprintln!("error: failed to watch {}: {e}", path.display());
+        return ExitCode::FAILURE;
+    }
+
+    println!("press Ctrl+C to stop");
+
+    // Debounce: wait a short time after events to batch rapid changes
+    let debounce = Duration::from_millis(100);
+    let mut last_event = std::time::Instant::now() - debounce;
+
+    loop {
+        match rx.recv() {
+            Ok(_event) => {
+                let now = std::time::Instant::now();
+                if now.duration_since(last_event) < debounce {
+                    continue;
+                }
+                last_event = now;
+
+                println!("\ndetected change, regenerating...");
+                if cmd_generate(path, false, false) == ExitCode::FAILURE {
+                    eprintln!("generation failed");
+                }
+            }
+            Err(e) => {
+                eprintln!("error: watcher error: {e}");
+                return ExitCode::FAILURE;
+            }
         }
     }
 }

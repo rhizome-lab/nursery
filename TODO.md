@@ -15,7 +15,7 @@
 - [ ] Config format detection
   - Auto-detect format from file extension if tool doesn't specify
 
-- [ ] Watch mode
+- [x] Watch mode
   - `nursery generate --watch`
   - Regenerate on nursery.toml changes
 
