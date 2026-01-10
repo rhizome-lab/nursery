@@ -1,0 +1,15 @@
+[package]
+name = "rhizome-nursery-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Core manifest parsing and schema validation for Nursery"
+
+[dependencies]
+jsonschema = "0.29"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+thiserror = "2"
+toml = "0.8"

@@ -4,43 +4,66 @@ Behavioral rules for Claude Code in this repository.
 
 ## Overview
 
-Nursery is the orchestration layer for the Rhizome ecosystem. It provides project scaffolding, manifest-based configuration, and tool coordination.
+Nursery is a **configuration manager** for the Rhizome ecosystem. It generates per-tool config files from a central `nursery.toml` manifest.
+
+### What Nursery Does
+
+- **Generate** — `nursery.toml` → per-tool native configs
+- **Validate** — Check configs against tool schemas before writing
+- **Template** — Variable substitution, shared logic across tools
+- **Scaffold** — Create new projects from seed templates
+
+### What Nursery Does NOT Do
+
+- **Run tools** — That's spore's job
+- **Manage dependencies** — That's spore's job
+- **Install tools** — Use your package manager
 
 ### Key Concepts
 
-- **`rhizome.toml`**: The manifest file that defines how Rhizome tools compose for a specific project
-- **Seeds**: Starter templates for common project types (archaeology, creation, lab)
-- **Orchestration**: Coordinating multiple tools (winnow, dew, lotus, etc.) based on the manifest
+- **`nursery.toml`**: Central manifest defining all tool configs
+- **`<tool> --schema`**: Convention for tools to expose their config schema
+- **Seeds**: Starter templates for common project types
+- **Variables**: Shared values across tool configs
 
 ### The Manifest
 
 ```toml
-# rhizome.toml
+# nursery.toml
 [project]
 name = "my-project"
 version = "0.1.0"
 
-[winnow]
+[variables]
+assets = "./assets"
+
+[siphon]
 source = "./dump/game.exe"
-strategy = "gms2"
-assets = "./assets/raw"
+output = "{{assets}}/raw"
 
 [dew]
-pipeline = "src/pipelines/assets.dew"
-
-[lotus]
-target = "web-wasm"
-port = 8080
+pipeline = "main.dew"
+input = "{{assets}}/raw"
+output = "{{assets}}/processed"
 ```
 
-The manifest is the single source of truth for how tools interact in a project.
+Running `nursery generate` creates:
+- `.siphon/config.toml`
+- `.dew/config.toml`
 
-### Seeds
+Tools read their native configs. No special runtime behavior.
 
-Pre-configured starter templates:
-- **seed-archaeology**: For lifting legacy games (winnow → dew → lotus)
-- **seed-creation**: For new lotus projects
-- **seed-lab**: Full ecosystem sandbox
+### Tool Schema Convention
+
+Tools expose config metadata via `--schema`:
+
+```json
+{
+  "config_path": ".siphon/config.toml",
+  "format": "toml",
+  "schema": { ... JSON Schema ... }
+}
+```
 
 ## Core Rule
 
@@ -56,13 +79,15 @@ Pre-configured starter templates:
 
 ## Design Principles
 
-**Manifest-driven.** The `rhizome.toml` file is the single source of truth. Don't require CLI flags for things that belong in the manifest.
+**Config generation, not orchestration.** Nursery generates configs, spore runs tools.
 
-**Lazy discovery.** Only inspect tools that are referenced in the manifest. Don't require all tools to be installed.
+**Tools stay dumb.** No special nursery conventions at runtime. Tools just read their config files.
 
-**Fail informatively.** When a tool is missing or misconfigured, show exactly what's wrong and how to fix it.
+**One source of truth.** `nursery.toml` is the single place to configure all tools.
 
-**No magic.** The manifest should be readable by humans. Avoid implicit behavior that can't be understood from reading the file.
+**Validate before write.** Catch errors before generating configs.
+
+**No magic.** The manifest should be readable by humans.
 
 ## Negative Constraints
 
@@ -70,13 +95,12 @@ Do not:
 - Announce actions ("I will now...") - just do them
 - Leave work uncommitted
 - Create special cases - design to avoid them
-- Add implicit dependencies between tools
-- Require tools that aren't referenced in the manifest
-- Hide configuration in environment variables
+- Add tool execution to nursery - that's spore
+- Require tools at nursery runtime (only `--schema` is needed)
 
 ## Crate Structure
 
 All crates use the `rhizome-nursery-` prefix:
-- `rhizome-nursery-core` - Manifest parsing and validation
+- `rhizome-nursery-core` - Manifest parsing, validation, config generation
 - `rhizome-nursery-cli` - CLI binary (named `nursery`)
 - `rhizome-nursery-seed` - Template scaffolding

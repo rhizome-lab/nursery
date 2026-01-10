@@ -22,6 +22,7 @@ export default withMermaid(
           items: [
             { text: 'Introduction', link: '/introduction' },
             { text: 'Getting Started', link: '/getting-started' },
+            { text: 'Design', link: '/design' },
           ]
         },
         {
@@ -29,6 +30,7 @@ export default withMermaid(
           items: [
             { text: 'Manifest Format', link: '/manifest' },
             { text: 'Seeds', link: '/seeds' },
+            { text: 'Tool Integration', link: '/tool-integration' },
           ]
         },
       ],

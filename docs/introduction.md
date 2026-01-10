@@ -16,7 +16,7 @@ Each tool is useful on its own, but combining them requires understanding their 
 
 ## The Solution
 
-Instead of memorizing arguments for multiple tools, you write one `rhizome.toml` manifest:
+Instead of memorizing arguments for multiple tools, you write one `nursery.toml` manifest:
 
 ```toml
 [project]
@@ -46,5 +46,5 @@ To reduce the "where do I start?" friction, Nursery provides **Seeds**—pre-con
 ## Next Steps
 
 - [Getting Started](/getting-started) - Install and create your first project
-- [Manifest Reference](/manifest) - Full `rhizome.toml` specification
+- [Manifest Reference](/manifest) - Full `nursery.toml` specification
 - [Seeds](/seeds) - Available starter templates

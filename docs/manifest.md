@@ -1,6 +1,6 @@
 # Manifest Reference
 
-The `rhizome.toml` file defines how Rhizome tools compose for a project.
+The `nursery.toml` manifest is the single source of truth for tool configuration. Running `nursery generate` creates per-tool config files from this central manifest.
 
 ## Project Section
 
@@ -11,44 +11,99 @@ version = "0.1.0"
 ```
 
 Required fields:
-- `name` - Project identifier
-- `version` - Semantic version
+- `name` — Project identifier
+- `version` — Semantic version
 
-## Tool Sections
+## Variables Section
 
-Each Rhizome tool can have its own section. Only include sections for tools you're using.
+Define shared values that can be used across tool configs:
 
-### Siphon
+```toml
+[variables]
+assets = "./assets"
+build_dir = "./build"
+debug = true
+```
+
+Use variables with `{{variable_name}}` syntax:
 
 ```toml
 [siphon]
-source = "./dump/game.exe"    # Path to legacy binary
-strategy = "gms2"             # Extraction strategy
-assets = "./assets/raw"       # Output directory for extracted assets
-```
+output = "{{assets}}/raw"
 
-### Dew
-
-```toml
-[dew]
-pipeline = "src/pipelines/assets.dew"  # Pipeline definition file
-```
-
-### Lotus
-
-```toml
 [lotus]
-target = "web-wasm"    # Build target (web-wasm, native)
-port = 8080            # Dev server port
+output = "{{build_dir}}/web"
 ```
 
-### Resin
+## Tool Sections
+
+Each tool gets its own section. Nursery validates these against the tool's schema and writes them to the tool's config file.
 
 ```toml
-[resin]
-assets = "./assets"    # Asset generation output
+[siphon]
+source = "./dump/game.exe"
+strategy = "gms2"
+assets = "{{assets}}/raw"
+
+[dew]
+pipeline = "src/pipelines/assets.dew"
+input = "{{assets}}/raw"
+output = "{{assets}}/processed"
+
+[lotus]
+target = "web-wasm"
+assets = "{{assets}}/processed"
+port = 8080
 ```
 
-## Dependency Resolution
+Running `nursery generate` creates:
+- `.siphon/config.toml`
+- `.dew/config.toml`
+- `.lotus/config.toml`
 
-Nursery automatically determines tool execution order based on declared inputs and outputs. For example, if `lotus.assets` points to `siphon.assets`, Siphon runs first.
+The exact paths and formats are determined by each tool's `--schema` response.
+
+## Tool Integration
+
+Tools tell Nursery where their config lives via `<tool> --schema`:
+
+```json
+{
+  "config_path": ".siphon/config.toml",
+  "format": "toml",
+  "schema": { ... }
+}
+```
+
+See [Tool Integration Guide](/tool-integration) for implementation details.
+
+## Example: Full Manifest
+
+```toml
+[project]
+name = "my-game-port"
+version = "0.1.0"
+
+[variables]
+assets = "./assets"
+source_exe = "./dump/original.exe"
+
+[siphon]
+source = "{{source_exe}}"
+strategy = "gms2"
+assets = "{{assets}}/raw"
+
+[dew]
+pipeline = "src/pipelines/main.dew"
+input = "{{assets}}/raw"
+output = "{{assets}}/processed"
+
+[resin]
+output = "{{assets}}/generated"
+seed = 12345
+
+[lotus]
+target = "web-wasm"
+assets = "{{assets}}/processed"
+port = 8080
+```

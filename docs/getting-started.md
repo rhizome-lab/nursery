@@ -15,11 +15,11 @@ nursery new my-project --seed creation
 cd my-project
 ```
 
-This creates a new directory with a pre-configured `rhizome.toml` and starter files.
+This creates a new directory with a pre-configured `nursery.toml` and starter files.
 
 ## The Manifest
 
-Open `rhizome.toml` to see how tools are configured:
+Open `nursery.toml` to see how tools are configured:
 
 ```toml
 [project]

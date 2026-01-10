@@ -1,0 +1,17 @@
+[package]
+name = "rhizome-nursery-seed"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Project scaffolding templates for Nursery"
+
+[features]
+default = ["infer"]
+infer = []
+
+[dependencies]
+dirs = "6"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+toml = "0.8"

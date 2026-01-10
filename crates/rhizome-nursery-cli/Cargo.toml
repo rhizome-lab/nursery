@@ -1,0 +1,16 @@
+[package]
+name = "rhizome-nursery-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "CLI for Nursery, a generic tool orchestrator"
+
+[[bin]]
+name = "nursery"
+path = "src/main.rs"
+
+[dependencies]
+rhizome-nursery-core.workspace = true
+rhizome-nursery-seed.workspace = true
+clap = { version = "4", features = ["derive"] }
