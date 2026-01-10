@@ -1,7 +1,10 @@
 use clap::{Parser, Subcommand};
-use rhizome_nursery_core::{generate_configs, CliSchemaProvider, Manifest, SchemaProvider};
+use rhizome_nursery_core::{
+    generate_configs, merge_to_manifest, pull_configs, CliSchemaProvider, Manifest, SchemaProvider,
+};
 use rhizome_nursery_seed::{SeedResolver, VariableResolver};
 use std::collections::HashMap;
+use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -25,6 +28,12 @@ enum Command {
         /// Only validate, don't write files
         #[arg(long)]
         check: bool,
+    },
+
+    /// Sync configs between nursery.toml and tool config files
+    Config {
+        #[command(subcommand)]
+        action: ConfigAction,
     },
 
     /// Create a new project from a seed
@@ -53,6 +62,31 @@ enum Command {
     Seeds,
 }
 
+#[derive(Subcommand)]
+enum ConfigAction {
+    /// Push nursery.toml to tool config files (alias for generate)
+    Push {
+        /// Path to the manifest file
+        #[arg(short, long, default_value = "nursery.toml")]
+        manifest: PathBuf,
+    },
+
+    /// Pull tool config files into nursery.toml
+    Pull {
+        /// Path to the manifest file
+        #[arg(short, long, default_value = "nursery.toml")]
+        manifest: PathBuf,
+
+        /// Tools to pull (if not specified, pulls all from manifest)
+        #[arg(value_name = "TOOL")]
+        tools: Vec<String>,
+
+        /// Don't write, just show what would be pulled
+        #[arg(long)]
+        dry_run: bool,
+    },
+}
+
 fn parse_var(s: &str) -> Result<(String, String), String> {
     let pos = s
         .find('=')
@@ -65,6 +99,14 @@ fn main() -> ExitCode {
 
     match cli.command {
         Command::Generate { manifest, check } => cmd_generate(&manifest, check),
+        Command::Config { action } => match action {
+            ConfigAction::Push { manifest } => cmd_generate(&manifest, false),
+            ConfigAction::Pull {
+                manifest,
+                tools,
+                dry_run,
+            } => cmd_pull(&manifest, tools, dry_run),
+        },
         Command::New {
             name,
             seed,
@@ -123,6 +165,69 @@ fn cmd_generate(path: &PathBuf, check_only: bool) -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+fn cmd_pull(path: &PathBuf, tools: Vec<String>, dry_run: bool) -> ExitCode {
+    let provider = CliSchemaProvider;
+    let base_dir = path.parent().unwrap_or(std::path::Path::new("."));
+
+    // Determine which tools to pull
+    let tool_names: Vec<String> = if tools.is_empty() {
+        // Try to read existing manifest to get tool list
+        match Manifest::from_path(path) {
+            Ok(m) => m.tools.keys().cloned().collect(),
+            Err(_) => {
+                eprintln!("error: no tools specified and no existing manifest");
+                eprintln!("hint: specify tools to pull, e.g., 'nursery config pull siphon dew'");
+                return ExitCode::FAILURE;
+            }
+        }
+    } else {
+        tools
+    };
+
+    if tool_names.is_empty() {
+        println!("no tools to pull");
+        return ExitCode::SUCCESS;
+    }
+
+    // Pull configs
+    let pulled = match pull_configs(&tool_names, &provider, base_dir) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    for config in &pulled {
+        println!("pulled: {} <- {}", config.tool, config.path.display());
+    }
+
+    // Merge into manifest
+    let existing = fs::read_to_string(path).ok();
+    let merged = match merge_to_manifest(&pulled, existing.as_deref()) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    if dry_run {
+        println!("\n--- nursery.toml (dry run) ---");
+        println!("{merged}");
+        return ExitCode::SUCCESS;
+    }
+
+    // Write manifest
+    if let Err(e) = fs::write(path, &merged) {
+        eprintln!("error: failed to write manifest: {e}");
+        return ExitCode::FAILURE;
+    }
+
+    println!("updated: {}", path.display());
+    ExitCode::SUCCESS
 }
 
 fn cmd_new(
