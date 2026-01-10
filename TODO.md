@@ -2,11 +2,16 @@
 
 ## Backlog
 
+- [ ] Tool registry integration
+  - Fetch package name mappings from registry
+  - `nursery tools lock` command to generate lockfile
+
 - [ ] Config format detection
   - Auto-detect format from file extension if tool doesn't specify
 
 ## Done
 
+- [x] Tool dependency management (`nursery tools check/install/ecosystems`)
 - [x] `nursery config pull` / `nursery config push`
   - Pull: Read existing tool configs back into nursery.toml
   - Push: Alias for generate
