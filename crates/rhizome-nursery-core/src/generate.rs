@@ -62,7 +62,7 @@ pub fn generate_configs(
     vars.insert("name".to_string(), manifest.project.name.clone());
     vars.insert("version".to_string(), manifest.project.version.clone());
 
-    for (tool_name, tool_config) in &manifest.tools {
+    for (tool_name, tool_config) in &manifest.tool_configs {
         let result = generate_tool_config(tool_name, tool_config, &vars, provider, base_dir)?;
         results.push(result);
     }
@@ -87,7 +87,7 @@ pub fn preview_configs(
     vars.insert("name".to_string(), manifest.project.name.clone());
     vars.insert("version".to_string(), manifest.project.version.clone());
 
-    for (tool_name, tool_config) in &manifest.tools {
+    for (tool_name, tool_config) in &manifest.tool_configs {
         let preview = preview_tool_config(tool_name, tool_config, &vars, provider, base_dir)?;
         previews.push(preview);
     }

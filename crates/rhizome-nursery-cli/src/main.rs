@@ -150,7 +150,7 @@ fn cmd_generate(path: &PathBuf, check_only: bool, diff_mode: bool) -> ExitCode {
         }
     };
 
-    if manifest.tools.is_empty() {
+    if manifest.tool_configs.is_empty() {
         println!("no tools configured");
         return ExitCode::SUCCESS;
     }
@@ -160,7 +160,7 @@ fn cmd_generate(path: &PathBuf, check_only: bool, diff_mode: bool) -> ExitCode {
 
     if check_only {
         // Just validate, don't write
-        for tool_name in manifest.tools.keys() {
+        for tool_name in manifest.tool_configs.keys() {
             match provider.fetch(tool_name) {
                 Ok(schema) => {
                     println!("validated: {tool_name} -> {}", schema.config_path.display());
@@ -315,7 +315,7 @@ fn cmd_pull(path: &PathBuf, tools: Vec<String>, dry_run: bool) -> ExitCode {
     let tool_names: Vec<String> = if tools.is_empty() {
         // Try to read existing manifest to get tool list
         match Manifest::from_path(path) {
-            Ok(m) => m.tools.keys().cloned().collect(),
+            Ok(m) => m.tool_configs.keys().cloned().collect(),
             Err(_) => {
                 eprintln!("error: no tools specified and no existing manifest");
                 eprintln!("hint: specify tools to pull, e.g., 'nursery config pull siphon dew'");

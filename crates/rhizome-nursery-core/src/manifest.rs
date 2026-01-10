@@ -11,8 +11,44 @@ pub struct Manifest {
     pub project: Project,
     /// Shared variables for templating.
     pub variables: BTreeMap<String, toml::Value>,
-    /// Tool configurations, keyed by tool name.
-    pub tools: BTreeMap<String, toml::Value>,
+    /// Tool dependencies from `[tools]` section.
+    pub tool_deps: BTreeMap<String, ToolDep>,
+    /// Ecosystems to include in lockfile (optional).
+    pub ecosystems: Option<Vec<String>>,
+    /// Tool configurations (e.g., `[siphon]`, `[dew]`).
+    pub tool_configs: BTreeMap<String, toml::Value>,
+}
+
+/// A tool dependency specification.
+#[derive(Debug, Clone)]
+pub struct ToolDep {
+    /// Version constraint (e.g., ">=14", "*", "=1.7").
+    pub version: String,
+    /// Whether this tool is optional.
+    pub optional: bool,
+}
+
+impl ToolDep {
+    /// Parse from a TOML value (either string or table).
+    fn from_toml(value: &toml::Value) -> Option<Self> {
+        match value {
+            // Simple form: ripgrep = ">=14"
+            toml::Value::String(version) => Some(Self {
+                version: version.clone(),
+                optional: false,
+            }),
+            // Table form: ripgrep = { version = ">=14", optional = true }
+            toml::Value::Table(t) => {
+                let version = t.get("version")?.as_str()?.to_string();
+                let optional = t
+                    .get("optional")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                Some(Self { version, optional })
+            }
+            _ => None,
+        }
+    }
 }
 
 /// Project metadata from the `[project]` section.
@@ -56,16 +92,44 @@ impl Manifest {
         let variables = table
             .remove("variables")
             .and_then(|v| v.as_table().cloned())
-            .map(|t| t.into_iter().map(|(k, v)| (k, v)).collect())
+            .map(|t| t.into_iter().collect())
             .unwrap_or_default();
 
-        // Everything else is a tool section
-        let tools = table.into_iter().collect();
+        // Extract tools section (dependencies, optional)
+        let (tool_deps, ecosystems) = if let Some(tools_value) = table.remove("tools") {
+            if let Some(tools_table) = tools_value.as_table() {
+                let ecosystems = tools_table
+                    .get("ecosystems")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(String::from))
+                            .collect()
+                    });
+
+                let deps = tools_table
+                    .iter()
+                    .filter(|(k, _)| *k != "ecosystems")
+                    .filter_map(|(k, v)| ToolDep::from_toml(v).map(|dep| (k.clone(), dep)))
+                    .collect();
+
+                (deps, ecosystems)
+            } else {
+                (BTreeMap::new(), None)
+            }
+        } else {
+            (BTreeMap::new(), None)
+        };
+
+        // Everything else is a tool config section
+        let tool_configs = table.into_iter().collect();
 
         Ok(Self {
             project,
             variables,
-            tools,
+            tool_deps,
+            ecosystems,
+            tool_configs,
         })
     }
 
@@ -97,7 +161,8 @@ mod tests {
         assert_eq!(manifest.project.name, "test");
         assert_eq!(manifest.project.version, "0.1.0");
         assert!(manifest.variables.is_empty());
-        assert!(manifest.tools.is_empty());
+        assert!(manifest.tool_deps.is_empty());
+        assert!(manifest.tool_configs.is_empty());
     }
 
     #[test]
@@ -120,7 +185,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_manifest_with_tools() {
+    fn parse_manifest_with_tool_configs() {
         let toml = r#"
             [project]
             name = "test"
@@ -135,9 +200,54 @@ mod tests {
         "#;
 
         let manifest = Manifest::from_str(toml).unwrap();
-        assert_eq!(manifest.tools.len(), 2);
-        assert!(manifest.tools.contains_key("siphon"));
-        assert!(manifest.tools.contains_key("dew"));
+        assert_eq!(manifest.tool_configs.len(), 2);
+        assert!(manifest.tool_configs.contains_key("siphon"));
+        assert!(manifest.tool_configs.contains_key("dew"));
+    }
+
+    #[test]
+    fn parse_manifest_with_tool_deps() {
+        let toml = r#"
+            [project]
+            name = "test"
+            version = "0.1.0"
+
+            [tools]
+            ripgrep = ">=14"
+            fd = "*"
+            jq = { version = "=1.7", optional = true }
+        "#;
+
+        let manifest = Manifest::from_str(toml).unwrap();
+        assert_eq!(manifest.tool_deps.len(), 3);
+
+        let rg = &manifest.tool_deps["ripgrep"];
+        assert_eq!(rg.version, ">=14");
+        assert!(!rg.optional);
+
+        let fd = &manifest.tool_deps["fd"];
+        assert_eq!(fd.version, "*");
+
+        let jq = &manifest.tool_deps["jq"];
+        assert_eq!(jq.version, "=1.7");
+        assert!(jq.optional);
+    }
+
+    #[test]
+    fn parse_manifest_with_ecosystems() {
+        let toml = r#"
+            [project]
+            name = "test"
+            version = "0.1.0"
+
+            [tools]
+            ecosystems = ["pacman", "nix"]
+            ripgrep = ">=14"
+        "#;
+
+        let manifest = Manifest::from_str(toml).unwrap();
+        assert_eq!(manifest.ecosystems, Some(vec!["pacman".to_string(), "nix".to_string()]));
+        assert_eq!(manifest.tool_deps.len(), 1);
     }
 
     #[test]
