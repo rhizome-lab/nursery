@@ -16,7 +16,7 @@ Nursery is a **configuration manager** for the Rhizome ecosystem. It generates p
 ### What Nursery Does NOT Do
 
 - **Run tools** — That's spore's job
-- **Manage dependencies** — That's spore's job
+- **Manage tool execution order** — That's spore's job
 - **Install tools** — Use your package manager
 
 ### Key Concepts

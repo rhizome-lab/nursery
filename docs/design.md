@@ -145,7 +145,7 @@ Future: Lua scripting for complex logic (via spore runtime).
 Nursery does **not**:
 
 - Run tools — That's spore's job
-- Manage dependencies between tools — That's spore's job
+- Manage tool execution order — That's spore's job
 - Install or version tools — Use your package manager
 - Replace tool CLIs — Tools work standalone, nursery is optional
 
