@@ -4,11 +4,13 @@
 //! from a central `nursery.toml` manifest.
 
 mod generate;
+mod lockfile;
 mod manifest;
 mod pull;
 mod schema;
 
 pub use generate::{generate_configs, preview_configs, ConfigPreview, GenerateError, GeneratedConfig};
+pub use lockfile::{LockedPackage, LockedTool, Lockfile, LockfileError};
 pub use manifest::{Manifest, ManifestError, Project, ToolDep};
 pub use pull::{merge_to_manifest, pull_configs, PullError, PulledConfig};
 pub use schema::{CliSchemaProvider, ConfigFormat, SchemaError, SchemaProvider, ToolSchema};
