@@ -1,8 +1,9 @@
 use clap::{Parser, Subcommand};
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use rhizome_nursery_core::{
-    generate_configs, merge_to_manifest, preview_configs, pull_configs, CliSchemaProvider,
-    Manifest, SchemaProvider,
+    detect_ecosystems, detect_primary_ecosystem, generate_configs, is_installed,
+    merge_to_manifest, preview_configs, pull_configs, CliSchemaProvider, Lockfile, Manifest,
+    SchemaProvider,
 };
 use rhizome_nursery_seed::{SeedResolver, VariableResolver};
 use std::collections::HashMap;
@@ -72,6 +73,36 @@ enum Command {
 
     /// List available seed templates
     Seeds,
+
+    /// Manage tool dependencies
+    Tools {
+        #[command(subcommand)]
+        action: ToolsAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum ToolsAction {
+    /// Check if required tools are installed
+    Check {
+        /// Path to the manifest file
+        #[arg(short, long, default_value = "nursery.toml")]
+        manifest: PathBuf,
+    },
+
+    /// Install missing tools
+    Install {
+        /// Path to the manifest file
+        #[arg(short, long, default_value = "nursery.toml")]
+        manifest: PathBuf,
+
+        /// Only show what would be installed
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Show detected package managers
+    Ecosystems,
 }
 
 #[derive(Subcommand)]
@@ -138,6 +169,11 @@ fn main() -> ExitCode {
             no_prompt,
         } => cmd_new(&name, &seed, vars, raw, no_prompt),
         Command::Seeds => cmd_seeds(),
+        Command::Tools { action } => match action {
+            ToolsAction::Check { manifest } => cmd_tools_check(&manifest),
+            ToolsAction::Install { manifest, dry_run } => cmd_tools_install(&manifest, dry_run),
+            ToolsAction::Ecosystems => cmd_tools_ecosystems(),
+        },
     }
 }
 
@@ -486,6 +522,188 @@ fn cmd_seeds() -> ExitCode {
         }
         Err(e) => {
             eprintln!("error: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn cmd_tools_ecosystems() -> ExitCode {
+    let ecosystems = detect_ecosystems();
+
+    if ecosystems.is_empty() {
+        println!("no supported package managers detected");
+        return ExitCode::SUCCESS;
+    }
+
+    println!("Detected package managers:");
+    for eco in &ecosystems {
+        println!("  {}", eco.id());
+    }
+
+    if let Some(primary) = detect_primary_ecosystem() {
+        println!("\nPrimary: {}", primary.id());
+    }
+
+    ExitCode::SUCCESS
+}
+
+fn cmd_tools_check(manifest_path: &PathBuf) -> ExitCode {
+    let manifest = match Manifest::from_path(manifest_path) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    if manifest.tool_deps.is_empty() {
+        println!("no tool dependencies configured");
+        return ExitCode::SUCCESS;
+    }
+
+    let ecosystem = match detect_primary_ecosystem() {
+        Some(e) => e,
+        None => {
+            eprintln!("error: no supported package manager detected");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    // Try to load lockfile for package names
+    let lockfile_path = manifest_path.with_file_name("nursery.lock");
+    let lockfile = Lockfile::load_or_default(&lockfile_path);
+
+    let mut all_ok = true;
+    let mut missing = Vec::new();
+
+    for (tool_name, dep) in &manifest.tool_deps {
+        // Get package name from lockfile or use tool name
+        let package_name = lockfile
+            .get(tool_name, ecosystem.id())
+            .map(|p| p.package.as_str())
+            .unwrap_or(tool_name.as_str());
+
+        let installed = is_installed(ecosystem, package_name);
+        let status = if installed { "OK" } else { "MISSING" };
+        let optional = if dep.optional { " (optional)" } else { "" };
+
+        println!("  {tool_name}: {status}{optional}");
+
+        if !installed && !dep.optional {
+            all_ok = false;
+            missing.push(package_name.to_string());
+        }
+    }
+
+    if all_ok {
+        println!("\nall required tools installed");
+        ExitCode::SUCCESS
+    } else {
+        println!("\nmissing {} required tool(s)", missing.len());
+        println!("run 'nursery tools install' to install them");
+        ExitCode::FAILURE
+    }
+}
+
+fn cmd_tools_install(manifest_path: &PathBuf, dry_run: bool) -> ExitCode {
+    let manifest = match Manifest::from_path(manifest_path) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    if manifest.tool_deps.is_empty() {
+        println!("no tool dependencies configured");
+        return ExitCode::SUCCESS;
+    }
+
+    let ecosystem = match detect_primary_ecosystem() {
+        Some(e) => e,
+        None => {
+            eprintln!("error: no supported package manager detected");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    // Try to load lockfile for package names
+    let lockfile_path = manifest_path.with_file_name("nursery.lock");
+    let lockfile = Lockfile::load_or_default(&lockfile_path);
+
+    // Find missing packages
+    let mut missing: Vec<String> = Vec::new();
+
+    for (tool_name, dep) in &manifest.tool_deps {
+        if dep.optional {
+            continue;
+        }
+
+        let package_name = lockfile
+            .get(tool_name, ecosystem.id())
+            .map(|p| p.package.clone())
+            .unwrap_or_else(|| tool_name.clone());
+
+        if !is_installed(ecosystem, &package_name) {
+            missing.push(package_name);
+        }
+    }
+
+    if missing.is_empty() {
+        println!("all required tools already installed");
+        return ExitCode::SUCCESS;
+    }
+
+    let packages: Vec<&str> = missing.iter().map(|s| s.as_str()).collect();
+    let cmd_display = ecosystem.install_cmd_display(&packages);
+
+    println!("Missing tools for {}:", ecosystem.id());
+    for pkg in &missing {
+        println!("  {pkg}");
+    }
+    println!("\nRun this command?\n");
+    println!("  {cmd_display}");
+
+    if dry_run {
+        println!("\n(dry run, not executing)");
+        return ExitCode::SUCCESS;
+    }
+
+    // Prompt for confirmation
+    print!("\n[Y/n] ");
+    io::stdout().flush().unwrap();
+
+    let mut input = String::new();
+    if io::stdin().read_line(&mut input).is_err() {
+        eprintln!("error: failed to read input");
+        return ExitCode::FAILURE;
+    }
+
+    let input = input.trim().to_lowercase();
+    if !input.is_empty() && input != "y" && input != "yes" {
+        println!("cancelled");
+        return ExitCode::SUCCESS;
+    }
+
+    // Execute install command
+    let cmd = ecosystem.install_cmd(&packages);
+    println!("\nrunning: {}\n", cmd.join(" "));
+
+    let status = std::process::Command::new(&cmd[0])
+        .args(&cmd[1..])
+        .status();
+
+    match status {
+        Ok(s) if s.success() => {
+            println!("\ninstallation complete");
+            ExitCode::SUCCESS
+        }
+        Ok(s) => {
+            eprintln!("\ninstallation failed with exit code: {:?}", s.code());
+            ExitCode::FAILURE
+        }
+        Err(e) => {
+            eprintln!("\nfailed to run command: {e}");
             ExitCode::FAILURE
         }
     }
