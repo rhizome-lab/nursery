@@ -1,7 +1,6 @@
 //! Pull tool configs back into manifest format.
 
-use crate::schema::{ConfigFormat, SchemaError, SchemaProvider, ToolSchema};
-use std::collections::BTreeMap;
+use crate::schema::{ConfigFormat, SchemaError, SchemaProvider};
 use std::fs;
 use std::path::Path;
 

@@ -2,7 +2,7 @@
 
 ## Backlog
 
-- [ ] `nursery config pull` / `nursery config push`
+- [x] `nursery config pull` / `nursery config push`
   - Pull: Read existing tool configs back into nursery.toml
   - Push: Alias for generate (or replace it?)
   - Enables round-tripping configs
@@ -19,7 +19,7 @@
   - `nursery generate --watch`
   - Regenerate on nursery.toml changes
 
-- [ ] Diff mode
+- [x] Diff mode
   - `nursery generate --diff`
   - Show what would change without writing
 

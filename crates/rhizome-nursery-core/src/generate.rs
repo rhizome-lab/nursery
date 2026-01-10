@@ -17,6 +17,19 @@ pub struct GeneratedConfig {
     pub format: ConfigFormat,
 }
 
+/// Preview of what would be generated (for diff mode).
+#[derive(Debug)]
+pub struct ConfigPreview {
+    /// Tool name.
+    pub tool: String,
+    /// Path where config would be written.
+    pub path: std::path::PathBuf,
+    /// Content that would be written.
+    pub content: String,
+    /// Existing content (if file exists).
+    pub existing: Option<String>,
+}
+
 /// Errors that can occur during generation.
 #[derive(Debug, thiserror::Error)]
 pub enum GenerateError {
@@ -55,6 +68,66 @@ pub fn generate_configs(
     }
 
     Ok(results)
+}
+
+/// Preview what configs would be generated (for diff mode).
+pub fn preview_configs(
+    manifest: &Manifest,
+    provider: &dyn SchemaProvider,
+    base_dir: &Path,
+) -> Result<Vec<ConfigPreview>, GenerateError> {
+    let mut previews = Vec::new();
+
+    // Build variables map including project name
+    let mut vars: HashMap<String, String> = manifest
+        .variables
+        .iter()
+        .filter_map(|(k, _)| manifest.get_variable(k).map(|val| (k.clone(), val)))
+        .collect();
+    vars.insert("name".to_string(), manifest.project.name.clone());
+    vars.insert("version".to_string(), manifest.project.version.clone());
+
+    for (tool_name, tool_config) in &manifest.tools {
+        let preview = preview_tool_config(tool_name, tool_config, &vars, provider, base_dir)?;
+        previews.push(preview);
+    }
+
+    Ok(previews)
+}
+
+/// Preview config for a single tool.
+fn preview_tool_config(
+    tool_name: &str,
+    config: &toml::Value,
+    vars: &HashMap<String, String>,
+    provider: &dyn SchemaProvider,
+    base_dir: &Path,
+) -> Result<ConfigPreview, GenerateError> {
+    // Fetch schema
+    let schema = provider
+        .fetch(tool_name)
+        .map_err(|e| GenerateError::SchemaFetch(tool_name.to_string(), e))?;
+
+    // Convert config to JSON for validation and variable expansion
+    let config_json = toml_to_json(config);
+    let expanded = expand_variables(&config_json, vars);
+
+    // Validate against schema
+    validate_config(tool_name, &expanded, &schema)?;
+
+    // Serialize without writing
+    let config_path = base_dir.join(&schema.config_path);
+    let content = serialize_config(tool_name, &expanded, schema.format)?;
+
+    // Read existing content if present
+    let existing = fs::read_to_string(&config_path).ok();
+
+    Ok(ConfigPreview {
+        tool: tool_name.to_string(),
+        path: config_path,
+        content,
+        existing,
+    })
 }
 
 /// Generate config for a single tool.
@@ -115,6 +188,25 @@ fn validate_config(
     Ok(())
 }
 
+/// Serialize config to string in the specified format.
+fn serialize_config(
+    tool_name: &str,
+    config: &serde_json::Value,
+    format: ConfigFormat,
+) -> Result<String, GenerateError> {
+    match format {
+        ConfigFormat::Toml => {
+            let toml_value = json_to_toml(config);
+            toml::to_string_pretty(&toml_value)
+                .map_err(|e| GenerateError::Serialize(tool_name.to_string(), e.to_string()))
+        }
+        ConfigFormat::Json => serde_json::to_string_pretty(config)
+            .map_err(|e| GenerateError::Serialize(tool_name.to_string(), e.to_string())),
+        ConfigFormat::Yaml => serde_yaml::to_string(config)
+            .map_err(|e| GenerateError::Serialize(tool_name.to_string(), e.to_string())),
+    }
+}
+
 /// Write config to file in the specified format.
 fn write_config(
     tool_name: &str,
@@ -128,17 +220,7 @@ fn write_config(
             .map_err(|e| GenerateError::CreateDir(tool_name.to_string(), e))?;
     }
 
-    let contents = match format {
-        ConfigFormat::Toml => {
-            let toml_value = json_to_toml(config);
-            toml::to_string_pretty(&toml_value)
-                .map_err(|e| GenerateError::Serialize(tool_name.to_string(), e.to_string()))?
-        }
-        ConfigFormat::Json => serde_json::to_string_pretty(config)
-            .map_err(|e| GenerateError::Serialize(tool_name.to_string(), e.to_string()))?,
-        ConfigFormat::Yaml => serde_yaml::to_string(config)
-            .map_err(|e| GenerateError::Serialize(tool_name.to_string(), e.to_string()))?,
-    };
+    let contents = serialize_config(tool_name, config, format)?;
 
     fs::write(path, contents).map_err(|e| GenerateError::WriteConfig(tool_name.to_string(), e))
 }

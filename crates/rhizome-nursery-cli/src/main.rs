@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use rhizome_nursery_core::{
-    generate_configs, merge_to_manifest, pull_configs, CliSchemaProvider, Manifest, SchemaProvider,
+    generate_configs, merge_to_manifest, preview_configs, pull_configs, CliSchemaProvider,
+    Manifest, SchemaProvider,
 };
 use rhizome_nursery_seed::{SeedResolver, VariableResolver};
 use std::collections::HashMap;
@@ -28,6 +29,10 @@ enum Command {
         /// Only validate, don't write files
         #[arg(long)]
         check: bool,
+
+        /// Show what would change without writing
+        #[arg(long)]
+        diff: bool,
     },
 
     /// Sync configs between nursery.toml and tool config files
@@ -98,9 +103,13 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
 
     match cli.command {
-        Command::Generate { manifest, check } => cmd_generate(&manifest, check),
+        Command::Generate {
+            manifest,
+            check,
+            diff,
+        } => cmd_generate(&manifest, check, diff),
         Command::Config { action } => match action {
-            ConfigAction::Push { manifest } => cmd_generate(&manifest, false),
+            ConfigAction::Push { manifest } => cmd_generate(&manifest, false, false),
             ConfigAction::Pull {
                 manifest,
                 tools,
@@ -118,7 +127,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn cmd_generate(path: &PathBuf, check_only: bool) -> ExitCode {
+fn cmd_generate(path: &PathBuf, check_only: bool, diff_mode: bool) -> ExitCode {
     let manifest = match Manifest::from_path(path) {
         Ok(m) => m,
         Err(e) => {
@@ -152,17 +161,76 @@ fn cmd_generate(path: &PathBuf, check_only: bool) -> ExitCode {
         return ExitCode::SUCCESS;
     }
 
-    match generate_configs(&manifest, &provider, base_dir) {
-        Ok(results) => {
-            for result in &results {
-                println!("generated: {} -> {}", result.tool, result.path.display());
+    if diff_mode {
+        // Show what would change
+        match preview_configs(&manifest, &provider, base_dir) {
+            Ok(previews) => {
+                let mut has_changes = false;
+                for preview in &previews {
+                    let changed = match &preview.existing {
+                        Some(existing) => existing != &preview.content,
+                        None => true,
+                    };
+
+                    if changed {
+                        has_changes = true;
+                        println!("--- {}", preview.path.display());
+                        print_diff(&preview.existing, &preview.content);
+                        println!();
+                    } else {
+                        println!("unchanged: {} -> {}", preview.tool, preview.path.display());
+                    }
+                }
+                if !has_changes {
+                    println!("no changes");
+                }
+                ExitCode::SUCCESS
             }
-            println!("generated {} config(s)", results.len());
-            ExitCode::SUCCESS
+            Err(e) => {
+                eprintln!("error: {e}");
+                ExitCode::FAILURE
+            }
         }
-        Err(e) => {
-            eprintln!("error: {e}");
-            ExitCode::FAILURE
+    } else {
+        match generate_configs(&manifest, &provider, base_dir) {
+            Ok(results) => {
+                for result in &results {
+                    println!("generated: {} -> {}", result.tool, result.path.display());
+                }
+                println!("generated {} config(s)", results.len());
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("error: {e}");
+                ExitCode::FAILURE
+            }
+        }
+    }
+}
+
+/// Print a simple line-based diff.
+fn print_diff(old: &Option<String>, new: &str) {
+    let old_lines: Vec<&str> = old.as_deref().unwrap_or("").lines().collect();
+    let new_lines: Vec<&str> = new.lines().collect();
+
+    if old.is_none() {
+        println!("+++ (new file)");
+        for line in &new_lines {
+            println!("+{line}");
+        }
+        return;
+    }
+
+    // Simple diff: show removed lines, then added lines
+    // For a more sophisticated diff, we'd use a diff library
+    for line in &old_lines {
+        if !new_lines.contains(line) {
+            println!("-{line}");
+        }
+    }
+    for line in &new_lines {
+        if !old_lines.contains(line) {
+            println!("+{line}");
         }
     }
 }
