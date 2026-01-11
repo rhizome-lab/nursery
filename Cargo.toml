@@ -11,3 +11,4 @@ repository = "https://github.com/rhizome-lab/nursery"
 [workspace.dependencies]
 rhizome-nursery-core = { path = "crates/rhizome-nursery-core" }
 rhizome-nursery-seed = { path = "crates/rhizome-nursery-seed" }
+rhizome-nursery-store = { path = "crates/rhizome-nursery-store" }

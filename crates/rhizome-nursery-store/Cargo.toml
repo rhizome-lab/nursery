@@ -1,0 +1,19 @@
+[package]
+name = "rhizome-nursery-store"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Content-addressed package store for Nursery"
+
+[dependencies]
+dirs = "5"
+flate2 = "1"
+sha2 = "0.10"
+tar = "0.4"
+thiserror = "2"
+xz2 = "0.1"
+zip = "2"
+
+[dev-dependencies]
+tempfile = "3"
