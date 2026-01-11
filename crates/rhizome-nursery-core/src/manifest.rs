@@ -1,5 +1,6 @@
 //! Manifest parsing for `nursery.toml`.
 
+use crate::config::ToolSource;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -13,6 +14,8 @@ pub struct Manifest {
     pub variables: BTreeMap<String, toml::Value>,
     /// Tool dependencies from `[tools]` section.
     pub tool_deps: BTreeMap<String, ToolDep>,
+    /// Default tool source for this project.
+    pub tool_source: Option<ToolSource>,
     /// Ecosystems to include in lockfile (optional).
     pub ecosystems: Option<Vec<String>>,
     /// Tool configurations (e.g., `[siphon]`, `[dew]`).
@@ -26,6 +29,8 @@ pub struct ToolDep {
     pub version: String,
     /// Whether this tool is optional.
     pub optional: bool,
+    /// Override source for this tool.
+    pub source: Option<ToolSource>,
 }
 
 impl ToolDep {
@@ -36,18 +41,37 @@ impl ToolDep {
             toml::Value::String(version) => Some(Self {
                 version: version.clone(),
                 optional: false,
+                source: None,
             }),
-            // Table form: ripgrep = { version = ">=14", optional = true }
+            // Table form: ripgrep = { version = ">=14", optional = true, source = "store" }
             toml::Value::Table(t) => {
                 let version = t.get("version")?.as_str()?.to_string();
                 let optional = t
                     .get("optional")
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
-                Some(Self { version, optional })
+                let source = t
+                    .get("source")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| parse_tool_source(s));
+                Some(Self {
+                    version,
+                    optional,
+                    source,
+                })
             }
             _ => None,
         }
+    }
+}
+
+fn parse_tool_source(s: &str) -> Option<ToolSource> {
+    match s {
+        "system" => Some(ToolSource::System),
+        "store" => Some(ToolSource::Store),
+        "prefer-system" => Some(ToolSource::PreferSystem),
+        "prefer-store" => Some(ToolSource::PreferStore),
+        _ => None,
     }
 }
 
@@ -96,7 +120,8 @@ impl Manifest {
             .unwrap_or_default();
 
         // Extract tools section (dependencies, optional)
-        let (tool_deps, ecosystems) = if let Some(tools_value) = table.remove("tools") {
+        let (tool_deps, tool_source, ecosystems) = if let Some(tools_value) = table.remove("tools")
+        {
             if let Some(tools_table) = tools_value.as_table() {
                 let ecosystems = tools_table
                     .get("ecosystems")
@@ -107,18 +132,24 @@ impl Manifest {
                             .collect()
                     });
 
+                let tool_source = tools_table
+                    .get("source")
+                    .and_then(|v| v.as_str())
+                    .and_then(parse_tool_source);
+
+                let reserved = ["ecosystems", "source"];
                 let deps = tools_table
                     .iter()
-                    .filter(|(k, _)| *k != "ecosystems")
+                    .filter(|(k, _)| !reserved.contains(&k.as_str()))
                     .filter_map(|(k, v)| ToolDep::from_toml(v).map(|dep| (k.clone(), dep)))
                     .collect();
 
-                (deps, ecosystems)
+                (deps, tool_source, ecosystems)
             } else {
-                (BTreeMap::new(), None)
+                (BTreeMap::new(), None, None)
             }
         } else {
-            (BTreeMap::new(), None)
+            (BTreeMap::new(), None, None)
         };
 
         // Everything else is a tool config section
@@ -128,6 +159,7 @@ impl Manifest {
             project,
             variables,
             tool_deps,
+            tool_source,
             ecosystems,
             tool_configs,
         })
