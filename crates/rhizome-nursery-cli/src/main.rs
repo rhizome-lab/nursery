@@ -49,13 +49,13 @@ enum Command {
         action: ConfigAction,
     },
 
-    /// Create a new project from a seed
-    New {
+    /// Initialize a new project from a seed template
+    Init {
         /// Project name
         name: String,
 
-        /// Seed template to use
-        #[arg(short, long, default_value = "creation")]
+        /// Seed template to use (default: creation)
+        #[arg(default_value = "creation")]
         seed: String,
 
         /// Set a variable (can be repeated)
@@ -161,13 +161,13 @@ fn main() -> ExitCode {
                 dry_run,
             } => cmd_pull(&manifest, tools, dry_run),
         },
-        Command::New {
+        Command::Init {
             name,
             seed,
             vars,
             raw,
             no_prompt,
-        } => cmd_new(&name, &seed, vars, raw, no_prompt),
+        } => cmd_init(&name, &seed, vars, raw, no_prompt),
         Command::Seeds => cmd_seeds(),
         Command::Tools { action } => match action {
             ToolsAction::Check { manifest } => cmd_tools_check(&manifest),
@@ -406,7 +406,7 @@ fn cmd_pull(path: &PathBuf, tools: Vec<String>, dry_run: bool) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn cmd_new(
+fn cmd_init(
     name: &str,
     seed_name: &str,
     cli_vars: Vec<(String, String)>,
