@@ -30,6 +30,10 @@
 - [x] Config generation (`nursery generate`)
 - [x] Design documentation
 
+## Complexity Hotspots (threshold >21)
+- [ ] `crates/rhizome-nursery-cli/src/main.rs:cmd_generate` (25)
+- [ ] `crates/rhizome-nursery-cli/src/main.rs:cmd_tools_install` (24)
+
 ## Maybe
 
 - [ ] Transformation hooks
