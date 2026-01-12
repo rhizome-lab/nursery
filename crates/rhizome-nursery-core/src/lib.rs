@@ -15,7 +15,8 @@ mod schema;
 pub use config::{ToolSource, ToolsConfig, UserConfig};
 pub use ecosystem::{Ecosystem, detect_ecosystems, detect_primary_ecosystem, is_installed};
 pub use generate::{
-    ConfigPreview, GenerateError, GeneratedConfig, generate_configs, preview_configs,
+    ConfigPreview, GenerateError, GenerateResult, GeneratedConfig, generate_configs,
+    preview_configs,
 };
 pub use lockfile::{LockedPackage, LockedTool, Lockfile, LockfileError};
 pub use manifest::{Manifest, ManifestError, Project, ToolDep};

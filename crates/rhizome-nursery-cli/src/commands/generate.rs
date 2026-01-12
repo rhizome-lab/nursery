@@ -2,7 +2,7 @@
 
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use rhizome_nursery_core::{
-    CliSchemaProvider, Manifest, SchemaProvider, generate_configs, preview_configs,
+    CliSchemaProvider, GenerateResult, Manifest, SchemaProvider, generate_configs, preview_configs,
 };
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -76,10 +76,26 @@ pub fn run(path: &PathBuf, check_only: bool, diff_mode: bool) -> ExitCode {
     } else {
         match generate_configs(&manifest, &provider, base_dir) {
             Ok(results) => {
+                let mut generated = 0;
+                let mut skipped = 0;
                 for result in &results {
-                    println!("generated: {} -> {}", result.tool, result.path.display());
+                    match result {
+                        GenerateResult::Generated(config) => {
+                            println!("generated: {} -> {}", config.tool, config.path.display());
+                            generated += 1;
+                        }
+                        GenerateResult::Skipped { tool, reason } => {
+                            eprintln!("warning: skipped '{tool}': {reason}");
+                            skipped += 1;
+                        }
+                    }
                 }
-                println!("generated {} config(s)", results.len());
+                if generated > 0 {
+                    println!("generated {} config(s)", generated);
+                }
+                if skipped > 0 {
+                    println!("skipped {} tool(s)", skipped);
+                }
                 ExitCode::SUCCESS
             }
             Err(e) => {

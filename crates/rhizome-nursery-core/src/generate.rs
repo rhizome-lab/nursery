@@ -17,6 +17,15 @@ pub struct GeneratedConfig {
     pub format: ConfigFormat,
 }
 
+/// Result of attempting to generate a tool config (may be skipped).
+#[derive(Debug)]
+pub enum GenerateResult {
+    /// Config was generated successfully.
+    Generated(GeneratedConfig),
+    /// Tool was skipped (e.g., --schema not supported).
+    Skipped { tool: String, reason: String },
+}
+
 /// Preview of what would be generated (for diff mode).
 #[derive(Debug)]
 pub struct ConfigPreview {
@@ -50,7 +59,7 @@ pub fn generate_configs(
     manifest: &Manifest,
     provider: &dyn SchemaProvider,
     base_dir: &Path,
-) -> Result<Vec<GeneratedConfig>, GenerateError> {
+) -> Result<Vec<GenerateResult>, GenerateError> {
     let mut results = Vec::new();
 
     // Build variables map including project name
@@ -141,11 +150,26 @@ fn generate_tool_config(
     vars: &HashMap<String, String>,
     provider: &dyn SchemaProvider,
     base_dir: &Path,
-) -> Result<GeneratedConfig, GenerateError> {
-    // Fetch schema
-    let schema = provider
-        .fetch(tool_name)
-        .map_err(|e| GenerateError::SchemaFetch(tool_name.to_string(), e))?;
+) -> Result<GenerateResult, GenerateError> {
+    use crate::schema::SchemaError;
+
+    // Fetch schema - skip gracefully if tool doesn't support --schema
+    let schema = match provider.fetch(tool_name) {
+        Ok(s) => s,
+        Err(SchemaError::ToolNotFound(t)) => {
+            return Ok(GenerateResult::Skipped {
+                tool: tool_name.to_string(),
+                reason: format!("'{t}' not found in PATH"),
+            });
+        }
+        Err(SchemaError::ToolFailed { tool, code, stderr }) => {
+            return Ok(GenerateResult::Skipped {
+                tool: tool_name.to_string(),
+                reason: format!("'{tool}' --schema failed (exit {code}): {stderr}"),
+            });
+        }
+        Err(e) => return Err(GenerateError::SchemaFetch(tool_name.to_string(), e)),
+    };
 
     // Convert config to JSON for validation and variable expansion
     let config_json = toml_to_json(config);
@@ -158,11 +182,11 @@ fn generate_tool_config(
     let config_path = base_dir.join(&schema.config_path);
     write_config(tool_name, &config_path, &expanded, schema.format)?;
 
-    Ok(GeneratedConfig {
+    Ok(GenerateResult::Generated(GeneratedConfig {
         tool: tool_name.to_string(),
         path: config_path,
         format: schema.format,
-    })
+    }))
 }
 
 /// Validate config against schema.
