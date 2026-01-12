@@ -189,9 +189,11 @@ fn main() -> ExitCode {
         } => commands::init::run(&name, &seed, vars, raw, no_prompt),
         Command::Seeds => commands::seeds::run(),
         Command::Tools { action } => match action {
-            ToolsAction::Check { manifest, dev, build } => {
-                commands::tools::check(&manifest, dev, build)
-            }
+            ToolsAction::Check {
+                manifest,
+                dev,
+                build,
+            } => commands::tools::check(&manifest, dev, build),
             ToolsAction::Install {
                 manifest,
                 dry_run,

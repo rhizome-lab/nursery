@@ -55,16 +55,13 @@ pub struct CliSchemaProvider;
 
 impl SchemaProvider for CliSchemaProvider {
     fn fetch(&self, tool: &str) -> Result<ToolSchema, SchemaError> {
-        let output = Command::new(tool)
-            .arg("--schema")
-            .output()
-            .map_err(|e| {
-                if e.kind() == std::io::ErrorKind::NotFound {
-                    SchemaError::ToolNotFound(tool.to_string())
-                } else {
-                    SchemaError::Exec(tool.to_string(), e)
-                }
-            })?;
+        let output = Command::new(tool).arg("--schema").output().map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                SchemaError::ToolNotFound(tool.to_string())
+            } else {
+                SchemaError::Exec(tool.to_string(), e)
+            }
+        })?;
 
         if !output.status.success() {
             return Err(SchemaError::ToolFailed {

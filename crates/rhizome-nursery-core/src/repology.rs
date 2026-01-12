@@ -119,7 +119,10 @@ impl RepologyClient {
         let url = format!("https://repology.org/api/v1/project/{}", project);
 
         let response = ureq::get(&url)
-            .set("User-Agent", "nursery/0.1 (https://github.com/rhizome-lab/nursery)")
+            .set(
+                "User-Agent",
+                "nursery/0.1 (https://github.com/rhizome-lab/nursery)",
+            )
             .call()
             .map_err(|e| RepologyError::Http(e.to_string()))?;
 
@@ -170,7 +173,11 @@ impl RepologyClient {
                 }
 
                 // If same status, prefer shorter name (usually the main package)
-                let existing_name_len = existing.visiblename.as_ref().map(|n| n.len()).unwrap_or(usize::MAX);
+                let existing_name_len = existing
+                    .visiblename
+                    .as_ref()
+                    .map(|n| n.len())
+                    .unwrap_or(usize::MAX);
                 let pkg_name_len = pkg_name.len();
 
                 if !pkg_newest && pkg_name_len >= existing_name_len {
@@ -200,15 +207,13 @@ impl RepologyClient {
                 }
 
                 // Capture binname from a good package (not completion/doc)
-                if info.binname.is_none() {
-                    if let Some(binname) = &pkg.binname {
-                        if !binname.ends_with("-completion")
-                            && !binname.ends_with("-doc")
-                            && !binname.contains("completion")
-                        {
-                            info.binname = Some(binname.clone());
-                        }
-                    }
+                if info.binname.is_none()
+                    && let Some(binname) = &pkg.binname
+                    && !binname.ends_with("-completion")
+                    && !binname.ends_with("-doc")
+                    && !binname.contains("completion")
+                {
+                    info.binname = Some(binname.clone());
                 }
             }
         }

@@ -67,7 +67,12 @@ impl Ecosystem {
             Ecosystem::Brew => vec!["brew".into(), "list".into(), package.into()],
             Ecosystem::Nix => vec!["nix-env".into(), "-q".into(), package.into()],
             Ecosystem::Scoop => vec!["scoop".into(), "list".into(), package.into()],
-            Ecosystem::Winget => vec!["winget".into(), "list".into(), "--id".into(), package.into()],
+            Ecosystem::Winget => vec![
+                "winget".into(),
+                "list".into(),
+                "--id".into(),
+                package.into(),
+            ],
             Ecosystem::Cargo => vec!["cargo".into(), "install".into(), "--list".into()],
         }
     }
@@ -76,7 +81,12 @@ impl Ecosystem {
     pub fn install_cmd(&self, packages: &[&str]) -> Vec<String> {
         match self {
             Ecosystem::Pacman => {
-                let mut cmd = vec!["sudo".into(), "pacman".into(), "-S".into(), "--noconfirm".into()];
+                let mut cmd = vec![
+                    "sudo".into(),
+                    "pacman".into(),
+                    "-S".into(),
+                    "--noconfirm".into(),
+                ];
                 cmd.extend(packages.iter().map(|s| s.to_string()));
                 cmd
             }
@@ -144,7 +154,10 @@ impl Ecosystem {
 
     /// Whether this ecosystem typically requires sudo.
     pub fn needs_sudo(&self) -> bool {
-        matches!(self, Ecosystem::Pacman | Ecosystem::Apt | Ecosystem::Dnf | Ecosystem::Apk)
+        matches!(
+            self,
+            Ecosystem::Pacman | Ecosystem::Apt | Ecosystem::Dnf | Ecosystem::Apk
+        )
     }
 }
 

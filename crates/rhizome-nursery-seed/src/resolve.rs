@@ -5,7 +5,7 @@ use crate::{Seed, SeedError};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Where a seed's files come from.
 #[derive(Debug, Clone)]
@@ -74,19 +74,19 @@ impl SeedResolver {
         let mut seeds = builtins();
 
         // Add user seeds, potentially overriding builtins
-        if let Some(ref user_dir) = self.user_dir {
-            if user_dir.exists() {
-                for entry in fs::read_dir(user_dir).map_err(SeedError::ReadSeed)? {
-                    let entry = entry.map_err(SeedError::ReadSeed)?;
-                    let path = entry.path();
+        if let Some(ref user_dir) = self.user_dir
+            && user_dir.exists()
+        {
+            for entry in fs::read_dir(user_dir).map_err(SeedError::ReadSeed)? {
+                let entry = entry.map_err(SeedError::ReadSeed)?;
+                let path = entry.path();
 
-                    if path.is_dir() {
-                        if let Some(seed) = self.load_seed_dir(&path)? {
-                            // Remove any builtin with the same name
-                            seeds.retain(|s| s.name != seed.name);
-                            seeds.push(seed);
-                        }
-                    }
+                if path.is_dir()
+                    && let Some(seed) = self.load_seed_dir(&path)?
+                {
+                    // Remove any builtin with the same name
+                    seeds.retain(|s| s.name != seed.name);
+                    seeds.push(seed);
                 }
             }
         }
@@ -105,7 +105,7 @@ impl SeedResolver {
         Ok(None)
     }
 
-    fn load_seed_dir(&self, path: &PathBuf) -> Result<Option<Seed>, SeedError> {
+    fn load_seed_dir(&self, path: &Path) -> Result<Option<Seed>, SeedError> {
         let manifest_path = path.join("seed.toml");
         if !manifest_path.exists() {
             return Ok(None);
@@ -130,7 +130,7 @@ impl SeedResolver {
             name: manifest.name,
             description: manifest.description,
             variables,
-            source: SeedSource::Directory(path.clone()),
+            source: SeedSource::Directory(path.to_path_buf()),
         }))
     }
 }

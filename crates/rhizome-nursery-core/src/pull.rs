@@ -77,12 +77,14 @@ fn pull_tool_config(
 }
 
 /// Parse config from string based on format.
-fn parse_config(contents: &str, format: ConfigFormat, tool_name: &str) -> Result<toml::Value, PullError> {
+fn parse_config(
+    contents: &str,
+    format: ConfigFormat,
+    tool_name: &str,
+) -> Result<toml::Value, PullError> {
     match format {
-        ConfigFormat::Toml => {
-            toml::from_str(contents)
-                .map_err(|e| PullError::ParseConfig(tool_name.to_string(), e.to_string()))
-        }
+        ConfigFormat::Toml => toml::from_str(contents)
+            .map_err(|e| PullError::ParseConfig(tool_name.to_string(), e.to_string())),
         ConfigFormat::Json => {
             let json: serde_json::Value = serde_json::from_str(contents)
                 .map_err(|e| PullError::ParseConfig(tool_name.to_string(), e.to_string()))?;
@@ -111,9 +113,7 @@ fn json_to_toml(value: &serde_json::Value) -> toml::Value {
             }
         }
         serde_json::Value::String(s) => toml::Value::String(s.clone()),
-        serde_json::Value::Array(arr) => {
-            toml::Value::Array(arr.iter().map(json_to_toml).collect())
-        }
+        serde_json::Value::Array(arr) => toml::Value::Array(arr.iter().map(json_to_toml).collect()),
         serde_json::Value::Object(obj) => {
             let table: toml::map::Map<String, toml::Value> = obj
                 .iter()
@@ -138,8 +138,14 @@ pub fn merge_to_manifest(
     // Ensure project section exists
     if !table.contains_key("project") {
         let mut project = toml::Table::new();
-        project.insert("name".to_string(), toml::Value::String("my-project".to_string()));
-        project.insert("version".to_string(), toml::Value::String("0.1.0".to_string()));
+        project.insert(
+            "name".to_string(),
+            toml::Value::String("my-project".to_string()),
+        );
+        project.insert(
+            "version".to_string(),
+            toml::Value::String("0.1.0".to_string()),
+        );
         table.insert("project".to_string(), toml::Value::Table(project));
     }
 
@@ -178,7 +184,8 @@ mod tests {
             path: ".mytool/config.toml".into(),
             config: toml::toml! {
                 source = "./input"
-            }.into(),
+            }
+            .into(),
         }];
 
         let result = merge_to_manifest(&pulled, None).unwrap();
@@ -203,7 +210,8 @@ foo = "bar"
             path: ".mytool/config.toml".into(),
             config: toml::toml! {
                 source = "./input"
-            }.into(),
+            }
+            .into(),
         }];
 
         let result = merge_to_manifest(&pulled, Some(existing)).unwrap();

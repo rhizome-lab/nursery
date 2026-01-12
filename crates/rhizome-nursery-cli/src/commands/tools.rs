@@ -1,8 +1,8 @@
 //! Tools command implementations.
 
 use rhizome_nursery_core::{
-    detect_ecosystems, detect_primary_ecosystem, is_installed, Ecosystem, LockedPackage,
-    LockedTool, Lockfile, Manifest, RepologyClient, ToolDep,
+    Ecosystem, LockedPackage, LockedTool, Lockfile, Manifest, RepologyClient, ToolDep,
+    detect_ecosystems, detect_primary_ecosystem, is_installed,
 };
 use std::collections::BTreeMap;
 use std::io::{self, Write};
@@ -222,9 +222,7 @@ pub fn install(
     let cmd = ecosystem.install_cmd(&packages);
     println!("\nrunning: {}\n", cmd.join(" "));
 
-    let status = std::process::Command::new(&cmd[0])
-        .args(&cmd[1..])
-        .status();
+    let status = std::process::Command::new(&cmd[0]).args(&cmd[1..]).status();
 
     match status {
         Ok(s) if s.success() => {

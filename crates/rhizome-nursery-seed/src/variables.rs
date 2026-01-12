@@ -174,23 +174,19 @@ fn infer_variables() -> HashMap<String, String> {
     if let Ok(output) = std::process::Command::new("git")
         .args(["config", "--get", "user.name"])
         .output()
+        && output.status.success()
+        && let Ok(name) = String::from_utf8(output.stdout)
     {
-        if output.status.success() {
-            if let Ok(name) = String::from_utf8(output.stdout) {
-                vars.insert("author".to_string(), name.trim().to_string());
-            }
-        }
+        vars.insert("author".to_string(), name.trim().to_string());
     }
 
     if let Ok(output) = std::process::Command::new("git")
         .args(["config", "--get", "user.email"])
         .output()
+        && output.status.success()
+        && let Ok(email) = String::from_utf8(output.stdout)
     {
-        if output.status.success() {
-            if let Ok(email) = String::from_utf8(output.stdout) {
-                vars.insert("email".to_string(), email.trim().to_string());
-            }
-        }
+        vars.insert("email".to_string(), email.trim().to_string());
     }
 
     // Environment variables

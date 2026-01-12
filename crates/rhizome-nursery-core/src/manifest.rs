@@ -59,14 +59,11 @@ impl ToolDep {
             // Table form: ripgrep = { version = ">=14", optional = true, apt = "rust-ripgrep" }
             toml::Value::Table(t) => {
                 let version = t.get("version")?.as_str()?.to_string();
-                let optional = t
-                    .get("optional")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
+                let optional = t.get("optional").and_then(|v| v.as_bool()).unwrap_or(false);
                 let source = t
                     .get("source")
                     .and_then(|v| v.as_str())
-                    .and_then(|s| parse_tool_source(s));
+                    .and_then(parse_tool_source);
 
                 // Parse ecosystem overrides (apt = "libssl-dev", etc.)
                 let overrides = t
@@ -141,11 +138,11 @@ impl Manifest {
     /// Load a manifest from a file path.
     pub fn from_path(path: impl AsRef<Path>) -> Result<Self, ManifestError> {
         let contents = std::fs::read_to_string(path)?;
-        Self::from_str(&contents)
+        Self::parse(&contents)
     }
 
     /// Parse a manifest from a TOML string.
-    pub fn from_str(s: &str) -> Result<Self, ManifestError> {
+    pub fn parse(s: &str) -> Result<Self, ManifestError> {
         let mut table: toml::Table = toml::from_str(s)?;
 
         // Extract and parse the project section
@@ -239,7 +236,7 @@ mod tests {
             version = "0.1.0"
         "#;
 
-        let manifest = Manifest::from_str(toml).unwrap();
+        let manifest = Manifest::parse(toml).unwrap();
         assert_eq!(manifest.project.name, "test");
         assert_eq!(manifest.project.version, "0.1.0");
         assert!(manifest.variables.is_empty());
@@ -260,8 +257,11 @@ mod tests {
             count = 42
         "#;
 
-        let manifest = Manifest::from_str(toml).unwrap();
-        assert_eq!(manifest.get_variable("assets"), Some("./assets".to_string()));
+        let manifest = Manifest::parse(toml).unwrap();
+        assert_eq!(
+            manifest.get_variable("assets"),
+            Some("./assets".to_string())
+        );
         assert_eq!(manifest.get_variable("debug"), Some("true".to_string()));
         assert_eq!(manifest.get_variable("count"), Some("42".to_string()));
     }
@@ -281,7 +281,7 @@ mod tests {
             pipeline = "assets.dew"
         "#;
 
-        let manifest = Manifest::from_str(toml).unwrap();
+        let manifest = Manifest::parse(toml).unwrap();
         assert_eq!(manifest.tool_configs.len(), 2);
         assert!(manifest.tool_configs.contains_key("siphon"));
         assert!(manifest.tool_configs.contains_key("dew"));
@@ -300,7 +300,7 @@ mod tests {
             jq = { version = "=1.7", optional = true }
         "#;
 
-        let manifest = Manifest::from_str(toml).unwrap();
+        let manifest = Manifest::parse(toml).unwrap();
         assert_eq!(manifest.tool_deps.len(), 3);
 
         let rg = &manifest.tool_deps["ripgrep"];
@@ -327,8 +327,11 @@ mod tests {
             ripgrep = ">=14"
         "#;
 
-        let manifest = Manifest::from_str(toml).unwrap();
-        assert_eq!(manifest.ecosystems, Some(vec!["pacman".to_string(), "nix".to_string()]));
+        let manifest = Manifest::parse(toml).unwrap();
+        assert_eq!(
+            manifest.ecosystems,
+            Some(vec!["pacman".to_string(), "nix".to_string()])
+        );
         assert_eq!(manifest.tool_deps.len(), 1);
     }
 
@@ -339,7 +342,7 @@ mod tests {
             source = "./game.exe"
         "#;
 
-        let err = Manifest::from_str(toml).unwrap_err();
+        let err = Manifest::parse(toml).unwrap_err();
         assert!(matches!(err, ManifestError::MissingProject));
     }
 
@@ -358,7 +361,7 @@ mod tests {
             tokei = ">=12"
         "#;
 
-        let manifest = Manifest::from_str(toml).unwrap();
+        let manifest = Manifest::parse(toml).unwrap();
         assert_eq!(manifest.tool_deps.len(), 1);
         assert_eq!(manifest.dev_tool_deps.len(), 2);
         assert!(manifest.dev_tool_deps.contains_key("fd-find"));
@@ -377,12 +380,15 @@ mod tests {
             cmake = ">=3.20"
         "#;
 
-        let manifest = Manifest::from_str(toml).unwrap();
+        let manifest = Manifest::parse(toml).unwrap();
         assert_eq!(manifest.build_deps.len(), 2);
 
         let openssl = &manifest.build_deps["openssl"];
         assert_eq!(openssl.version, "*");
-        assert_eq!(openssl.overrides.get("apt"), Some(&"libssl-dev".to_string()));
+        assert_eq!(
+            openssl.overrides.get("apt"),
+            Some(&"libssl-dev".to_string())
+        );
 
         let cmake = &manifest.build_deps["cmake"];
         assert_eq!(cmake.version, ">=3.20");
@@ -400,7 +406,7 @@ mod tests {
             openssl = { version = "*", apt = "libssl-dev", pacman = "openssl" }
         "#;
 
-        let manifest = Manifest::from_str(toml).unwrap();
+        let manifest = Manifest::parse(toml).unwrap();
         let openssl = &manifest.build_deps["openssl"];
 
         // Uses override when present

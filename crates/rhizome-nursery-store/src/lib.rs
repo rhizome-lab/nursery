@@ -137,13 +137,13 @@ impl Store {
     ) -> Result<StoredPackage, StoreError> {
         let hash = hash_bytes(bytes);
 
-        if let Some(expected) = expected_hash {
-            if hash != expected {
-                return Err(StoreError::HashMismatch {
-                    expected: expected.to_string(),
-                    actual: hash,
-                });
-            }
+        if let Some(expected) = expected_hash
+            && hash != expected
+        {
+            return Err(StoreError::HashMismatch {
+                expected: expected.to_string(),
+                actual: hash,
+            });
         }
 
         let dest = self.store_dir.join(&hash);
@@ -223,15 +223,15 @@ impl Store {
             let entry = entry.map_err(StoreError::ReadFile)?;
             let path = entry.path();
 
-            if path.is_dir() {
-                if let Some(hash) = path.file_name().and_then(|n| n.to_str()) {
-                    let binaries = self.find_binaries(&path);
-                    packages.push(StoredPackage {
-                        hash: hash.to_string(),
-                        path,
-                        binaries,
-                    });
-                }
+            if path.is_dir()
+                && let Some(hash) = path.file_name().and_then(|n| n.to_str())
+            {
+                let binaries = self.find_binaries(&path);
+                packages.push(StoredPackage {
+                    hash: hash.to_string(),
+                    path,
+                    binaries,
+                });
             }
         }
 
@@ -269,12 +269,11 @@ impl Store {
             if let Ok(entries) = fs::read_dir(&search_path) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if is_executable(&path) {
-                        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                            if !binaries.contains(&name.to_string()) {
-                                binaries.push(name.to_string());
-                            }
-                        }
+                    if is_executable(&path)
+                        && let Some(name) = path.file_name().and_then(|n| n.to_str())
+                        && !binaries.contains(&name.to_string())
+                    {
+                        binaries.push(name.to_string());
                     }
                 }
             }

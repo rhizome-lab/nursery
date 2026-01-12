@@ -1,6 +1,6 @@
 //! Config sync command implementations.
 
-use rhizome_nursery_core::{merge_to_manifest, pull_configs, CliSchemaProvider, Manifest};
+use rhizome_nursery_core::{CliSchemaProvider, Manifest, merge_to_manifest, pull_configs};
 use std::fs;
 use std::path::PathBuf;
 use std::process::ExitCode;

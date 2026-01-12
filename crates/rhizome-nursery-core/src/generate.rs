@@ -235,9 +235,7 @@ fn toml_to_json(value: &toml::Value) -> serde_json::Value {
             .unwrap_or(serde_json::Value::Null),
         toml::Value::Boolean(b) => serde_json::Value::Bool(*b),
         toml::Value::Datetime(dt) => serde_json::Value::String(dt.to_string()),
-        toml::Value::Array(arr) => {
-            serde_json::Value::Array(arr.iter().map(toml_to_json).collect())
-        }
+        toml::Value::Array(arr) => serde_json::Value::Array(arr.iter().map(toml_to_json).collect()),
         toml::Value::Table(table) => {
             let map = table
                 .iter()
@@ -263,9 +261,7 @@ fn json_to_toml(value: &serde_json::Value) -> toml::Value {
             }
         }
         serde_json::Value::String(s) => toml::Value::String(s.clone()),
-        serde_json::Value::Array(arr) => {
-            toml::Value::Array(arr.iter().map(json_to_toml).collect())
-        }
+        serde_json::Value::Array(arr) => toml::Value::Array(arr.iter().map(json_to_toml).collect()),
         serde_json::Value::Object(obj) => {
             let table = obj
                 .iter()

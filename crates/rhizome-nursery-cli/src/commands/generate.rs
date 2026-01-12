@@ -2,7 +2,7 @@
 
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use rhizome_nursery_core::{
-    generate_configs, preview_configs, CliSchemaProvider, Manifest, SchemaProvider,
+    CliSchemaProvider, Manifest, SchemaProvider, generate_configs, preview_configs,
 };
 use std::path::PathBuf;
 use std::process::ExitCode;

@@ -57,11 +57,11 @@ impl Lockfile {
     /// Load a lockfile from a path.
     pub fn from_path(path: impl AsRef<Path>) -> Result<Self, LockfileError> {
         let contents = std::fs::read_to_string(path)?;
-        Self::from_str(&contents)
+        Self::parse(&contents)
     }
 
     /// Parse a lockfile from a TOML string.
-    pub fn from_str(s: &str) -> Result<Self, LockfileError> {
+    pub fn parse(s: &str) -> Result<Self, LockfileError> {
         Ok(toml::from_str(s)?)
     }
 
@@ -116,7 +116,7 @@ mod tests {
             nixpkgs = "github:NixOS/nixpkgs/abc123"
         "#;
 
-        let lockfile = Lockfile::from_str(toml).unwrap();
+        let lockfile = Lockfile::parse(toml).unwrap();
         assert!(lockfile.has_tool("ripgrep"));
 
         let pacman = lockfile.get("ripgrep", "pacman").unwrap();
@@ -156,7 +156,7 @@ mod tests {
         );
 
         let serialized = lockfile.to_string().unwrap();
-        let parsed = Lockfile::from_str(&serialized).unwrap();
+        let parsed = Lockfile::parse(&serialized).unwrap();
 
         assert!(parsed.has_tool("ripgrep"));
         let apt = parsed.get("ripgrep", "apt").unwrap();
