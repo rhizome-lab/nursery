@@ -14,6 +14,10 @@ pub struct Manifest {
     pub variables: BTreeMap<String, toml::Value>,
     /// Tool dependencies from `[tools]` section.
     pub tool_deps: BTreeMap<String, ToolDep>,
+    /// Dev tool dependencies from `[dev-tools]` section.
+    pub dev_tool_deps: BTreeMap<String, ToolDep>,
+    /// Build dependencies from `[build-deps]` section (libraries, headers).
+    pub build_deps: BTreeMap<String, ToolDep>,
     /// Default tool source for this project.
     pub tool_source: Option<ToolSource>,
     /// Ecosystems to include in lockfile (optional).
@@ -31,7 +35,15 @@ pub struct ToolDep {
     pub optional: bool,
     /// Override source for this tool.
     pub source: Option<ToolSource>,
+    /// Ecosystem-specific package name overrides.
+    /// e.g., { "apt": "libssl-dev" } for openssl on Debian.
+    pub overrides: BTreeMap<String, String>,
 }
+
+/// Known ecosystem identifiers for override parsing.
+const ECOSYSTEM_IDS: &[&str] = &[
+    "pacman", "apt", "dnf", "apk", "brew", "nix", "scoop", "winget", "cargo",
+];
 
 impl ToolDep {
     /// Parse from a TOML value (either string or table).
@@ -42,8 +54,9 @@ impl ToolDep {
                 version: version.clone(),
                 optional: false,
                 source: None,
+                overrides: BTreeMap::new(),
             }),
-            // Table form: ripgrep = { version = ">=14", optional = true, source = "store" }
+            // Table form: ripgrep = { version = ">=14", optional = true, apt = "rust-ripgrep" }
             toml::Value::Table(t) => {
                 let version = t.get("version")?.as_str()?.to_string();
                 let optional = t
@@ -54,14 +67,31 @@ impl ToolDep {
                     .get("source")
                     .and_then(|v| v.as_str())
                     .and_then(|s| parse_tool_source(s));
+
+                // Parse ecosystem overrides (apt = "libssl-dev", etc.)
+                let overrides = t
+                    .iter()
+                    .filter(|(k, _)| ECOSYSTEM_IDS.contains(&k.as_str()))
+                    .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
+                    .collect();
+
                 Some(Self {
                     version,
                     optional,
                     source,
+                    overrides,
                 })
             }
             _ => None,
         }
+    }
+
+    /// Get the package name for a given ecosystem, using override if present.
+    pub fn package_name(&self, ecosystem: &str, default: &str) -> String {
+        self.overrides
+            .get(ecosystem)
+            .cloned()
+            .unwrap_or_else(|| default.to_string())
     }
 }
 
@@ -73,6 +103,18 @@ fn parse_tool_source(s: &str) -> Option<ToolSource> {
         "prefer-store" => Some(ToolSource::PreferStore),
         _ => None,
     }
+}
+
+/// Parse a simple deps section (dev-tools, build-deps).
+fn parse_deps_section(value: Option<toml::Value>) -> BTreeMap<String, ToolDep> {
+    value
+        .and_then(|v| v.as_table().cloned())
+        .map(|t| {
+            t.iter()
+                .filter_map(|(k, v)| ToolDep::from_toml(v).map(|dep| (k.clone(), dep)))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Project metadata from the `[project]` section.
@@ -152,6 +194,12 @@ impl Manifest {
             (BTreeMap::new(), None, None)
         };
 
+        // Extract dev-tools section (optional)
+        let dev_tool_deps = parse_deps_section(table.remove("dev-tools"));
+
+        // Extract build-deps section (optional)
+        let build_deps = parse_deps_section(table.remove("build-deps"));
+
         // Everything else is a tool config section
         let tool_configs = table.into_iter().collect();
 
@@ -159,6 +207,8 @@ impl Manifest {
             project,
             variables,
             tool_deps,
+            dev_tool_deps,
+            build_deps,
             tool_source,
             ecosystems,
             tool_configs,
@@ -291,5 +341,73 @@ mod tests {
 
         let err = Manifest::from_str(toml).unwrap_err();
         assert!(matches!(err, ManifestError::MissingProject));
+    }
+
+    #[test]
+    fn parse_dev_tools() {
+        let toml = r#"
+            [project]
+            name = "test"
+            version = "0.1.0"
+
+            [tools]
+            ripgrep = ">=14"
+
+            [dev-tools]
+            fd-find = "*"
+            tokei = ">=12"
+        "#;
+
+        let manifest = Manifest::from_str(toml).unwrap();
+        assert_eq!(manifest.tool_deps.len(), 1);
+        assert_eq!(manifest.dev_tool_deps.len(), 2);
+        assert!(manifest.dev_tool_deps.contains_key("fd-find"));
+        assert!(manifest.dev_tool_deps.contains_key("tokei"));
+    }
+
+    #[test]
+    fn parse_build_deps() {
+        let toml = r#"
+            [project]
+            name = "test"
+            version = "0.1.0"
+
+            [build-deps]
+            openssl = { version = "*", apt = "libssl-dev" }
+            cmake = ">=3.20"
+        "#;
+
+        let manifest = Manifest::from_str(toml).unwrap();
+        assert_eq!(manifest.build_deps.len(), 2);
+
+        let openssl = &manifest.build_deps["openssl"];
+        assert_eq!(openssl.version, "*");
+        assert_eq!(openssl.overrides.get("apt"), Some(&"libssl-dev".to_string()));
+
+        let cmake = &manifest.build_deps["cmake"];
+        assert_eq!(cmake.version, ">=3.20");
+        assert!(cmake.overrides.is_empty());
+    }
+
+    #[test]
+    fn tool_dep_package_name() {
+        let toml = r#"
+            [project]
+            name = "test"
+            version = "0.1.0"
+
+            [build-deps]
+            openssl = { version = "*", apt = "libssl-dev", pacman = "openssl" }
+        "#;
+
+        let manifest = Manifest::from_str(toml).unwrap();
+        let openssl = &manifest.build_deps["openssl"];
+
+        // Uses override when present
+        assert_eq!(openssl.package_name("apt", "openssl"), "libssl-dev");
+        assert_eq!(openssl.package_name("pacman", "openssl"), "openssl");
+
+        // Falls back to default when no override
+        assert_eq!(openssl.package_name("brew", "openssl"), "openssl");
     }
 }

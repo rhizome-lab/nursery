@@ -88,6 +88,14 @@ enum ToolsAction {
         /// Path to the manifest file
         #[arg(short, long, default_value = "nursery.toml")]
         manifest: PathBuf,
+
+        /// Include dev tools
+        #[arg(long)]
+        dev: bool,
+
+        /// Include build dependencies
+        #[arg(long)]
+        build: bool,
     },
 
     /// Install missing tools
@@ -99,6 +107,14 @@ enum ToolsAction {
         /// Only show what would be installed
         #[arg(long)]
         dry_run: bool,
+
+        /// Include dev tools
+        #[arg(long)]
+        dev: bool,
+
+        /// Include build dependencies
+        #[arg(long)]
+        build: bool,
     },
 
     /// Show detected package managers
@@ -183,8 +199,10 @@ fn main() -> ExitCode {
         } => cmd_init(&name, &seed, vars, raw, no_prompt),
         Command::Seeds => cmd_seeds(),
         Command::Tools { action } => match action {
-            ToolsAction::Check { manifest } => cmd_tools_check(&manifest),
-            ToolsAction::Install { manifest, dry_run } => cmd_tools_install(&manifest, dry_run),
+            ToolsAction::Check { manifest, dev, build } => cmd_tools_check(&manifest, dev, build),
+            ToolsAction::Install { manifest, dry_run, dev, build } => {
+                cmd_tools_install(&manifest, dry_run, dev, build)
+            }
             ToolsAction::Ecosystems => cmd_tools_ecosystems(),
             ToolsAction::Lookup { tool } => cmd_tools_lookup(&tool),
             ToolsAction::Lock { manifest } => cmd_tools_lock(&manifest),
@@ -562,7 +580,7 @@ fn cmd_tools_ecosystems() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn cmd_tools_check(manifest_path: &PathBuf) -> ExitCode {
+fn cmd_tools_check(manifest_path: &PathBuf, include_dev: bool, include_build: bool) -> ExitCode {
     let manifest = match Manifest::from_path(manifest_path) {
         Ok(m) => m,
         Err(e) => {
@@ -570,11 +588,6 @@ fn cmd_tools_check(manifest_path: &PathBuf) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-
-    if manifest.tool_deps.is_empty() {
-        println!("no tool dependencies configured");
-        return ExitCode::SUCCESS;
-    }
 
     let ecosystem = match detect_primary_ecosystem() {
         Some(e) => e,
@@ -591,36 +604,75 @@ fn cmd_tools_check(manifest_path: &PathBuf) -> ExitCode {
     let mut all_ok = true;
     let mut missing = Vec::new();
 
-    for (tool_name, dep) in &manifest.tool_deps {
-        // Get package name from lockfile or use tool name
-        let package_name = lockfile
-            .get(tool_name, ecosystem.id())
-            .map(|p| p.package.as_str())
-            .unwrap_or(tool_name.as_str());
-
-        let installed = is_installed(ecosystem, package_name);
-        let status = if installed { "OK" } else { "MISSING" };
-        let optional = if dep.optional { " (optional)" } else { "" };
-
-        println!("  {tool_name}: {status}{optional}");
-
-        if !installed && !dep.optional {
-            all_ok = false;
-            missing.push(package_name.to_string());
+    // Helper to check a set of deps
+    let mut check_deps = |deps: &std::collections::BTreeMap<String, rhizome_nursery_core::ToolDep>,
+                          section: &str| {
+        if !deps.is_empty() {
+            println!("\n[{section}]");
         }
+        for (tool_name, dep) in deps {
+            // Get package name: override > lockfile > tool name
+            let package_name = dep
+                .overrides
+                .get(ecosystem.id())
+                .map(|s| s.as_str())
+                .or_else(|| {
+                    lockfile
+                        .get(tool_name, ecosystem.id())
+                        .map(|p| p.package.as_str())
+                })
+                .unwrap_or(tool_name.as_str());
+
+            let installed = is_installed(ecosystem, package_name);
+            let status = if installed { "OK" } else { "MISSING" };
+            let optional = if dep.optional { " (optional)" } else { "" };
+
+            println!("  {tool_name}: {status}{optional}");
+
+            if !installed && !dep.optional {
+                all_ok = false;
+                missing.push(package_name.to_string());
+            }
+        }
+    };
+
+    // Check runtime tools
+    check_deps(&manifest.tool_deps, "tools");
+
+    // Check dev tools if requested
+    if include_dev {
+        check_deps(&manifest.dev_tool_deps, "dev-tools");
+    }
+
+    // Check build deps if requested
+    if include_build {
+        check_deps(&manifest.build_deps, "build-deps");
+    }
+
+    if manifest.tool_deps.is_empty()
+        && (!include_dev || manifest.dev_tool_deps.is_empty())
+        && (!include_build || manifest.build_deps.is_empty())
+    {
+        println!("no dependencies configured");
+        return ExitCode::SUCCESS;
     }
 
     if all_ok {
-        println!("\nall required tools installed");
+        println!("\nall required dependencies installed");
         ExitCode::SUCCESS
     } else {
-        println!("\nmissing {} required tool(s)", missing.len());
+        println!("\nmissing {} required dependency(ies)", missing.len());
         println!("run 'nursery tools install' to install them");
         ExitCode::FAILURE
     }
 }
 
-fn cmd_tools_install(manifest_path: &PathBuf, dry_run: bool) -> ExitCode {
+fn cmd_tools_install(
+    manifest_path: &PathBuf,
+    dry_run: bool,
+    include_dev: bool,
+    include_build: bool,
+) -> ExitCode {
     let manifest = match Manifest::from_path(manifest_path) {
         Ok(m) => m,
         Err(e) => {
@@ -628,11 +680,6 @@ fn cmd_tools_install(manifest_path: &PathBuf, dry_run: bool) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-
-    if manifest.tool_deps.is_empty() {
-        println!("no tool dependencies configured");
-        return ExitCode::SUCCESS;
-    }
 
     let ecosystem = match detect_primary_ecosystem() {
         Some(e) => e,
@@ -646,33 +693,57 @@ fn cmd_tools_install(manifest_path: &PathBuf, dry_run: bool) -> ExitCode {
     let lockfile_path = manifest_path.with_file_name("nursery.lock");
     let lockfile = Lockfile::load_or_default(&lockfile_path);
 
-    // Find missing packages
-    let mut missing: Vec<String> = Vec::new();
+    // Helper to find missing packages in a dep set
+    let find_missing =
+        |deps: &std::collections::BTreeMap<String, rhizome_nursery_core::ToolDep>| -> Vec<String> {
+            deps.iter()
+                .filter(|(_, dep)| !dep.optional)
+                .filter_map(|(tool_name, dep)| {
+                    // Get package name: override > lockfile > tool name
+                    let package_name = dep
+                        .overrides
+                        .get(ecosystem.id())
+                        .cloned()
+                        .or_else(|| {
+                            lockfile
+                                .get(tool_name, ecosystem.id())
+                                .map(|p| p.package.clone())
+                        })
+                        .unwrap_or_else(|| tool_name.clone());
 
-    for (tool_name, dep) in &manifest.tool_deps {
-        if dep.optional {
-            continue;
-        }
+                    if !is_installed(ecosystem, &package_name) {
+                        Some(package_name)
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        };
 
-        let package_name = lockfile
-            .get(tool_name, ecosystem.id())
-            .map(|p| p.package.clone())
-            .unwrap_or_else(|| tool_name.clone());
+    // Collect missing packages
+    let mut missing: Vec<String> = find_missing(&manifest.tool_deps);
 
-        if !is_installed(ecosystem, &package_name) {
-            missing.push(package_name);
-        }
+    if include_dev {
+        missing.extend(find_missing(&manifest.dev_tool_deps));
     }
 
+    if include_build {
+        missing.extend(find_missing(&manifest.build_deps));
+    }
+
+    // Deduplicate
+    missing.sort();
+    missing.dedup();
+
     if missing.is_empty() {
-        println!("all required tools already installed");
+        println!("all required dependencies already installed");
         return ExitCode::SUCCESS;
     }
 
     let packages: Vec<&str> = missing.iter().map(|s| s.as_str()).collect();
     let cmd_display = ecosystem.install_cmd_display(&packages);
 
-    println!("Missing tools for {}:", ecosystem.id());
+    println!("Missing dependencies for {}:", ecosystem.id());
     for pkg in &missing {
         println!("  {pkg}");
     }
@@ -764,8 +835,12 @@ fn cmd_tools_lock(manifest_path: &PathBuf) -> ExitCode {
         }
     };
 
-    if manifest.tool_deps.is_empty() {
-        println!("no tool dependencies to lock");
+    let total_deps = manifest.tool_deps.len()
+        + manifest.dev_tool_deps.len()
+        + manifest.build_deps.len();
+
+    if total_deps == 0 {
+        println!("no dependencies to lock");
         return ExitCode::SUCCESS;
     }
 
@@ -788,54 +863,112 @@ fn cmd_tools_lock(manifest_path: &PathBuf) -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    println!("Resolving tools for ecosystems: {}",
-        ecosystems.iter().map(|e| e.id()).collect::<Vec<_>>().join(", "));
-    println!();
+    println!(
+        "Resolving dependencies for ecosystems: {}",
+        ecosystems.iter().map(|e| e.id()).collect::<Vec<_>>().join(", ")
+    );
 
-    for (tool_name, dep) in &manifest.tool_deps {
-        print!("  {tool_name}... ");
-        io::stdout().flush().unwrap();
+    // Helper to lock a set of deps
+    let mut lock_deps = |deps: &std::collections::BTreeMap<String, rhizome_nursery_core::ToolDep>,
+                          section: &str| {
+        if deps.is_empty() {
+            return;
+        }
+        println!("\n[{section}]");
 
-        match client.lookup(tool_name) {
-            Ok(info) => {
-                let mut eco_packages = std::collections::BTreeMap::new();
+        for (tool_name, dep) in deps {
+            print!("  {tool_name}... ");
+            io::stdout().flush().unwrap();
 
-                for eco in &ecosystems {
-                    if let Some(pkg) = info.packages.get(eco) {
-                        eco_packages.insert(
-                            eco.id().to_string(),
-                            LockedPackage {
-                                package: pkg.name.clone(),
-                                version: pkg.version.clone(),
-                                hash: None,
-                                archive: None,
-                                nixpkgs: None,
+            match client.lookup(tool_name) {
+                Ok(info) => {
+                    let mut eco_packages = std::collections::BTreeMap::new();
+
+                    for eco in &ecosystems {
+                        // Check for manual override first
+                        if let Some(override_pkg) = dep.overrides.get(eco.id()) {
+                            eco_packages.insert(
+                                eco.id().to_string(),
+                                LockedPackage {
+                                    package: override_pkg.clone(),
+                                    version: "override".to_string(),
+                                    hash: None,
+                                    archive: None,
+                                    nixpkgs: None,
+                                },
+                            );
+                        } else if let Some(pkg) = info.packages.get(eco) {
+                            eco_packages.insert(
+                                eco.id().to_string(),
+                                LockedPackage {
+                                    package: pkg.name.clone(),
+                                    version: pkg.version.clone(),
+                                    hash: None,
+                                    archive: None,
+                                    nixpkgs: None,
+                                },
+                            );
+                        }
+                    }
+
+                    if eco_packages.is_empty() {
+                        println!("not found");
+                    } else {
+                        println!("ok ({} ecosystem(s))", eco_packages.len());
+
+                        lockfile.tools.insert(
+                            tool_name.clone(),
+                            LockedTool {
+                                source: format!("repology:{tool_name}"),
+                                constraint: dep.version.clone(),
+                                ecosystems: eco_packages,
                             },
                         );
                     }
                 }
-
-                if eco_packages.is_empty() {
-                    println!("not found");
-                    continue;
+                Err(e) => {
+                    // If not found on Repology but has overrides, use those
+                    if !dep.overrides.is_empty() {
+                        let mut eco_packages = std::collections::BTreeMap::new();
+                        for eco in &ecosystems {
+                            if let Some(override_pkg) = dep.overrides.get(eco.id()) {
+                                eco_packages.insert(
+                                    eco.id().to_string(),
+                                    LockedPackage {
+                                        package: override_pkg.clone(),
+                                        version: "override".to_string(),
+                                        hash: None,
+                                        archive: None,
+                                        nixpkgs: None,
+                                    },
+                                );
+                            }
+                        }
+                        if !eco_packages.is_empty() {
+                            println!("ok (override)");
+                            lockfile.tools.insert(
+                                tool_name.clone(),
+                                LockedTool {
+                                    source: "override".to_string(),
+                                    constraint: dep.version.clone(),
+                                    ecosystems: eco_packages,
+                                },
+                            );
+                        } else {
+                            println!("error: {e}");
+                        }
+                    } else {
+                        println!("error: {e}");
+                    }
                 }
-
-                println!("ok ({} ecosystem(s))", eco_packages.len());
-
-                lockfile.tools.insert(
-                    tool_name.clone(),
-                    LockedTool {
-                        source: format!("repology:{tool_name}"),
-                        constraint: dep.version.clone(),
-                        ecosystems: eco_packages,
-                    },
-                );
-            }
-            Err(e) => {
-                println!("error: {e}");
             }
         }
-    }
+    };
+
+    // Lock all dependency types
+    lock_deps(&manifest.tool_deps, "tools");
+    lock_deps(&manifest.dev_tool_deps, "dev-tools");
+    lock_deps(&manifest.build_deps, "build-deps");
 
     // Write lockfile
     let lockfile_path = manifest_path.with_file_name("nursery.lock");
@@ -843,7 +976,7 @@ fn cmd_tools_lock(manifest_path: &PathBuf) -> ExitCode {
     match lockfile.write(&lockfile_path) {
         Ok(()) => {
             println!("\nWrote {}", lockfile_path.display());
-            println!("Locked {} tool(s)", lockfile.tools.len());
+            println!("Locked {} dependency(ies)", lockfile.tools.len());
             ExitCode::SUCCESS
         }
         Err(e) => {
