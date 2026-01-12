@@ -5,9 +5,10 @@ Nursery is a **configuration manager** for the Rhizome ecosystem. It generates p
 ## Core Principles
 
 1. **One source of truth** — `nursery.toml` defines all tool configs in one place
-2. **Tools stay dumb** — Tools just read their native config files, no special runtime behavior
-3. **Validation before generation** — Catch config errors before writing anything
-4. **Templating for DRY** — Share variables across tools, with optional Lua upgrade path
+2. **Invisible manifest** — Tools never read `nursery.toml` directly, only their generated native configs
+3. **Tools stay dumb** — Tools just read their native config files, no special runtime behavior
+4. **Validation before generation** — Catch config errors before writing anything
+5. **Templating for DRY** — Share variables across tools, with optional Lua upgrade path
 
 ## Architecture
 
@@ -26,7 +27,7 @@ Nursery is a **configuration manager** for the Rhizome ecosystem. It generates p
 ┌─────────────────────────────────────┐
 │  .siphon/config.toml                │
 │  .dew/config.toml                   │  ← Per-tool native configs
-│  .lotus/config.toml                 │
+│  .spore/config.toml                 │
 └─────────────────────────────────────┘
          │
          ▼
@@ -55,10 +56,9 @@ pipeline = "src/pipelines/main.dew"
 input = "{{assets_dir}}/raw"
 output = "{{assets_dir}}/processed"
 
-[lotus]
-target = "web-wasm"
-assets = "{{assets_dir}}/processed"
-port = 8080
+[spore]
+entry = "scripts/main.lua"
+integrations = ["llm", "moss"]
 ```
 
 ## Tool Schema Convention

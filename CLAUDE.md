@@ -21,10 +21,22 @@ Nursery is a **configuration manager** for the Rhizome ecosystem. It generates p
 
 ### Key Concepts
 
-- **`nursery.toml`**: Central manifest defining all tool configs
+- **`nursery.toml`**: Central manifest defining all tool configs (invisible to tools at runtime)
 - **`<tool> --schema`**: Convention for tools to expose their config schema
 - **Seeds**: Starter templates for common project types
 - **Variables**: Shared values across tool configs
+
+### The Invisible Manifest
+
+`nursery.toml` is the **source of truth** but is **invisible at runtime**. Tools never read it directly - they only read their generated native configs.
+
+```
+nursery.toml  →  nursery generate  →  .spore/config.toml
+                                  →  .siphon/config.toml
+                                  →  .dew/config.toml
+```
+
+This keeps tools simple and decoupled from nursery.
 
 ### The Manifest
 
