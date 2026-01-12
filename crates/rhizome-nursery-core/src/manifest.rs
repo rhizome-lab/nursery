@@ -119,8 +119,9 @@ fn parse_deps_section(value: Option<toml::Value>) -> BTreeMap<String, ToolDep> {
 pub struct Project {
     /// Project name.
     pub name: String,
-    /// Project version.
-    pub version: String,
+    /// Project version (optional).
+    #[serde(default)]
+    pub version: Option<String>,
 }
 
 /// Errors that can occur when loading a manifest.
@@ -238,7 +239,7 @@ mod tests {
 
         let manifest = Manifest::parse(toml).unwrap();
         assert_eq!(manifest.project.name, "test");
-        assert_eq!(manifest.project.version, "0.1.0");
+        assert_eq!(manifest.project.version, Some("0.1.0".to_string()));
         assert!(manifest.variables.is_empty());
         assert!(manifest.tool_deps.is_empty());
         assert!(manifest.tool_configs.is_empty());

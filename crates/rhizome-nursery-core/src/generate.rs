@@ -60,7 +60,9 @@ pub fn generate_configs(
         .filter_map(|(k, _)| manifest.get_variable(k).map(|val| (k.clone(), val)))
         .collect();
     vars.insert("name".to_string(), manifest.project.name.clone());
-    vars.insert("version".to_string(), manifest.project.version.clone());
+    if let Some(version) = &manifest.project.version {
+        vars.insert("version".to_string(), version.clone());
+    }
 
     for (tool_name, tool_config) in &manifest.tool_configs {
         let result = generate_tool_config(tool_name, tool_config, &vars, provider, base_dir)?;
@@ -85,7 +87,9 @@ pub fn preview_configs(
         .filter_map(|(k, _)| manifest.get_variable(k).map(|val| (k.clone(), val)))
         .collect();
     vars.insert("name".to_string(), manifest.project.name.clone());
-    vars.insert("version".to_string(), manifest.project.version.clone());
+    if let Some(version) = &manifest.project.version {
+        vars.insert("version".to_string(), version.clone());
+    }
 
     for (tool_name, tool_config) in &manifest.tool_configs {
         let preview = preview_tool_config(tool_name, tool_config, &vars, provider, base_dir)?;
