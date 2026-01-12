@@ -9,6 +9,7 @@ mod generate;
 mod lockfile;
 mod manifest;
 mod pull;
+mod repology;
 mod schema;
 
 pub use config::{ToolSource, ToolsConfig, UserConfig};
@@ -17,4 +18,5 @@ pub use generate::{generate_configs, preview_configs, ConfigPreview, GenerateErr
 pub use lockfile::{LockedPackage, LockedTool, Lockfile, LockfileError};
 pub use manifest::{Manifest, ManifestError, Project, ToolDep};
 pub use pull::{merge_to_manifest, pull_configs, PullError, PulledConfig};
+pub use repology::{PackageInfo, RepologyClient, RepologyError, ToolInfo};
 pub use schema::{CliSchemaProvider, ConfigFormat, SchemaError, SchemaProvider, ToolSchema};

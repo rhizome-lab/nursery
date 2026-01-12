@@ -1,230 +1,213 @@
 # Tool Registry Spec
 
-Specification for the cross-platform package registry that maps tool names to package manager packages.
+Specification for cross-platform package resolution using Repology.
 
 ## Overview
 
-The registry is a machine-readable database mapping canonical tool names to their package names, versions, and metadata across multiple ecosystems (apt, pacman, nix, brew, etc.).
+Nursery uses [Repology](https://repology.org) to resolve tool names to package names across different ecosystems (apt, pacman, nix, brew, etc.). Repology is a comprehensive package tracking service that monitors 300+ package repositories.
 
-Nursery consumes this registry to resolve `[tools]` entries in `nursery.toml` to concrete install commands.
+## Why Repology?
 
-## Registry Format
+Instead of building and maintaining our own registry, we leverage Repology's existing infrastructure:
 
-JSONL (JSON Lines) for streaming/incremental updates. One tool per line.
+- **Comprehensive coverage**: 300+ repos already tracked
+- **Community maintained**: Package mappings updated automatically
+- **Battle-tested**: Used by package maintainers worldwide
+- **API available**: JSON API for programmatic access
 
-```jsonl
-{"tool":"ripgrep","source":"github:BurntSushi/ripgrep","bin":["rg"],"ecosystems":{"apt":{"package":"ripgrep"},"pacman":{"package":"ripgrep"},"nix":{"attr":"ripgrep"},"brew":{"formula":"ripgrep"},"cargo":{"crate":"ripgrep"}}}
-{"tool":"fd","source":"github:sharkdp/fd","bin":["fd"],"ecosystems":{"apt":{"package":"fd-find","bin":["fdfind"]},"pacman":{"package":"fd"},"nix":{"attr":"fd"},"brew":{"formula":"fd"}}}
-```
+## Repology API
 
-### Tool Entry Schema
-
-```json
-{
-  "tool": "string, canonical name",
-  "source": "string, authoritative source (github:owner/repo, gitlab:..., url:...)",
-  "description": "string, optional",
-  "bin": ["array of binary names produced"],
-  "ecosystems": {
-    "<ecosystem>": {
-      "package": "string, package name in this ecosystem",
-      "bin": ["optional, if binary names differ from canonical"],
-      "notes": "optional, special instructions"
-    }
-  }
-}
-```
-
-### Supported Ecosystems
-
-| ID | Package Manager | Version Source |
-|----|-----------------|----------------|
-| `apt` | apt (Debian/Ubuntu) | `apt-cache policy` |
-| `pacman` | pacman (Arch) | `pacman -Si`, ALA for historical |
-| `nix` | Nix | nixpkgs, pinnable |
-| `brew` | Homebrew (macOS/Linux) | `brew info` |
-| `dnf` | dnf (Fedora/RHEL) | `dnf info` |
-| `apk` | apk (Alpine) | `apk info` |
-| `scoop` | Scoop (Windows) | `scoop info` |
-| `winget` | winget (Windows) | `winget show` |
-| `cargo` | cargo install | crates.io |
-| `npm` | npm | npmjs.com |
-| `pip` | pip | pypi.org |
-
-## Version Index
-
-Separate file tracking available versions per ecosystem. Updated more frequently than the main registry.
-
-```jsonl
-{"tool":"ripgrep","ecosystem":"apt","versions":[{"version":"14.1.0-1","distros":["bookworm","noble"]},{"version":"13.0.0-2","distros":["bullseye","jammy"]}]}
-{"tool":"ripgrep","ecosystem":"pacman","versions":[{"version":"14.1.0-1","ala":"https://archive.archlinux.org/packages/r/ripgrep/ripgrep-14.1.0-1-x86_64.pkg.tar.zst"}]}
-{"tool":"ripgrep","ecosystem":"nix","versions":[{"version":"14.1.0","nixpkgs":"github:NixOS/nixpkgs/nixos-24.05","hash":"sha256-..."}]}
-```
-
-## Verification
-
-How we verify that packages across ecosystems are the same tool:
-
-### Primary: Source Match
-
-Compare the upstream source URL. Most packages include:
-- `Homepage` field
-- `Source` / `Repository` URL
-- Build scripts pointing to source
-
-If multiple ecosystems point to the same GitHub repo, high confidence they're the same tool.
-
-### Secondary: Binary Match
-
-Verify the package produces the expected binaries:
-- Check package file lists
-- Compare binary names to canonical `bin` array
-
-### Tertiary: Description Similarity
-
-NLP/fuzzy match on descriptions as a weak signal.
-
-### Confidence Levels
-
-- `verified` — Source URL matches, binaries match
-- `likely` — Source URL matches, binaries unchecked
-- `name-only` — Same package name, unverified (flag for review)
-- `manual` — Human-verified override
-
-## Registry CI Pipeline
+### Endpoint
 
 ```
-┌─────────────────┐
-│  Fetch Metadata │ ← Query each ecosystem's package index
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│    Correlate    │ ← Group by source URL
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│     Verify      │ ← Check binaries, descriptions
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Flag Conflicts │ ← Same name, different source → manual review
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│    Publish      │ ← registry.jsonl, versions.jsonl
-└─────────────────┘
+GET https://repology.org/api/v1/project/{name}
 ```
 
-### Fetching
+Returns an array of packages across all repositories that belong to the project.
 
-Each ecosystem needs a fetcher:
+### Response Fields
 
-- **apt**: Parse `Sources` files from mirrors, extract Homepage/Vcs-Git
-- **pacman**: Parse `.SRCINFO` from AUR/repos, extract `url`, `source`
-- **nix**: Parse nixpkgs, extract `meta.homepage`, `src` derivation
-- **brew**: Parse formula JSON API, extract `homepage`, `url`
-- **cargo**: Query crates.io API, extract `repository`
+| Field | Description |
+|-------|-------------|
+| `repo` | Repository name (e.g., "arch", "debian_12", "homebrew") |
+| `visiblename` | Package name to install |
+| `binname` | Binary name (executable) |
+| `version` | Version string |
+| `status` | "newest", "outdated", "legacy", etc. |
 
-### Scheduling
+### Rate Limiting
 
-- Full rebuild: weekly
-- Version updates: daily
-- On-demand for new tool requests
+- 1 request/second for bulk operations
+- Local caching recommended (24h TTL)
 
-## Nursery Integration
+## Ecosystem Mapping
 
-### nursery.toml
+Repology uses specific repo identifiers. We map them to our ecosystem enum:
+
+| Ecosystem | Repology Repos |
+|-----------|----------------|
+| `pacman` | `arch`, `aur` |
+| `apt` | `debian_*`, `ubuntu_*` |
+| `dnf` | `fedora_*`, `centos_*`, `epel_*` |
+| `apk` | `alpine_*` |
+| `brew` | `homebrew`, `homebrew_casks` |
+| `nix` | `nix_*` |
+| `scoop` | `scoop` |
+| `winget` | `winget` |
+| `cargo` | `crates_io` |
+
+## Caching
+
+Results are cached locally in `~/.cache/nursery/repology/`:
+
+```
+~/.cache/nursery/repology/
+  ripgrep.json      # Cached ToolInfo
+  fd-find.json
+  ...
+```
+
+Cache TTL: 24 hours
+
+## nursery.toml
 
 ```toml
+[project]
+name = "my-project"
+version = "0.1.0"
+
 [tools]
 ripgrep = ">=14"
-fd = "*"
+fd-find = "*"      # Note: Repology project name
 jq = "=1.7"
 
 # Optional: limit ecosystems in lockfile
 ecosystems = ["pacman", "nix"]
 ```
 
-### nursery.lock
+**Important**: Tool names must match Repology project names. Use `nursery tools lookup <name>` to find the correct project name.
+
+## nursery.lock
+
+Generated by `nursery tools lock`:
 
 ```toml
-# Auto-generated, do not edit
-
 [ripgrep]
-source = "github:BurntSushi/ripgrep"
+source = "repology:ripgrep"
 constraint = ">=14"
 
 [ripgrep.pacman]
 package = "ripgrep"
-version = "14.1.0-1"
-ala = "https://archive.archlinux.org/packages/r/ripgrep/ripgrep-14.1.0-1-x86_64.pkg.tar.zst"
+version = "14.1.0"
+
+[ripgrep.apt]
+package = "rust-ripgrep"
+version = "14.1.0"
 
 [ripgrep.nix]
-attr = "ripgrep"
+package = "ripgrep"
 version = "14.1.0"
-nixpkgs = "github:NixOS/nixpkgs/abc123def"
-hash = "sha256-..."
 ```
 
-### Commands
+## Commands
 
-- `nursery tools check` — Verify installed tools match constraints
-- `nursery tools lock` — Resolve and write lockfile
-- `nursery tools install` — Install missing tools via local ecosystem
-- `nursery tools install --dry-run` — Show commands without running
+### `nursery tools lookup <name>`
 
-### Install Flow
+Look up a tool via Repology:
 
-1. Detect local ecosystem (pacman, apt, brew, etc.)
-2. Read lockfile for that ecosystem's packages
-3. Check what's already installed
-4. Build install command for missing packages
-5. **Prompt user** with command to run
-6. Execute (with sudo if needed) on confirmation
+```
+$ nursery tools lookup ripgrep
+Looking up 'ripgrep' via Repology...
+
+Binary: ripgrep
+Packages:
+  pacman       ripgrep (14.1.0)
+  apt          rust-ripgrep (14.1.0)
+  nix          ripgrep (14.1.0)
+  brew         ripgrep (14.1.0)
+  cargo        ripgrep (14.1.0)
+```
+
+### `nursery tools lock`
+
+Resolve all tool dependencies and write lockfile:
+
+```
+$ nursery tools lock
+Resolving tools for ecosystems: pacman, nix
+
+  ripgrep... ok (2 ecosystem(s))
+  fd-find... ok (2 ecosystem(s))
+
+Wrote nursery.lock
+Locked 2 tool(s)
+```
+
+### `nursery tools check`
+
+Verify installed tools:
+
+```
+$ nursery tools check
+  ripgrep: OK
+  fd-find: MISSING
+
+missing 1 required tool(s)
+run 'nursery tools install' to install them
+```
+
+### `nursery tools install`
+
+Install missing tools:
 
 ```
 $ nursery tools install
 
 Missing tools for pacman:
-  ripgrep 14.1.0-1
-  fd 10.1.0-1
+  fd
 
 Run this command?
 
-  sudo pacman -S ripgrep fd
+  sudo pacman -S fd
 
 [Y/n]
 ```
 
-## Open Questions
+## Known Limitations
 
-- [ ] How to handle tools not in any ecosystem? (fallback to direct download?)
-- [ ] AUR vs official repos for Arch?
-- [ ] Flatpak/Snap as ecosystems?
-- [ ] How to handle conflicting package names? (different tools with same name)
-- [ ] Signed registry for security?
+### Project Name Mismatches
 
-## Implementation Notes
+Some tools have different Repology project names than their common names:
 
-The registry tooling is a separate project from nursery. Suggested structure:
+| Common Name | Repology Name |
+|-------------|---------------|
+| `fd` | `fd-find` |
+| `bat` | `bat-cat` (sometimes) |
 
-```
-rhizome-registry/
-  fetchers/
-    apt.rs
-    pacman.rs
-    nix.rs
-    brew.rs
-    ...
-  correlate.rs
-  verify.rs
-  publish.rs
-  registry.jsonl      # output
-  versions.jsonl      # output
-```
+Use `nursery tools lookup` to find the correct name.
 
-Rust recommended for consistency with nursery, but could be Python for easier scraping.
+### Package Name Variations
+
+Package names vary by ecosystem:
+
+| Project | apt | pacman |
+|---------|-----|--------|
+| ripgrep | `rust-ripgrep` | `ripgrep` |
+| fd-find | `fd-find` | `fd` |
+
+The lockfile captures these mappings so the correct package is installed on each system.
+
+### Filtering
+
+We filter out auxiliary packages:
+- `-doc`, `-docs` (documentation)
+- `-git`, `-bin` (development/binary variants)
+- `-dev`, `-devel`, `-dbg` (development files)
+- `*-completion` (shell completions)
+
+## Future Work
+
+- [ ] Alias support (fd -> fd-find)
+- [ ] Fallback to direct download for tools not in repos
+- [ ] Historical version lookup via archive.org / ALA
+- [ ] Hash verification for reproducibility

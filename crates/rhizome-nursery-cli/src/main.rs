@@ -2,8 +2,8 @@ use clap::{Parser, Subcommand};
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use rhizome_nursery_core::{
     detect_ecosystems, detect_primary_ecosystem, generate_configs, is_installed,
-    merge_to_manifest, preview_configs, pull_configs, CliSchemaProvider, Lockfile, Manifest,
-    SchemaProvider,
+    merge_to_manifest, preview_configs, pull_configs, CliSchemaProvider, Ecosystem, LockedPackage,
+    LockedTool, Lockfile, Manifest, RepologyClient, SchemaProvider,
 };
 use rhizome_nursery_seed::{SeedResolver, VariableResolver};
 use std::collections::HashMap;
@@ -103,6 +103,19 @@ enum ToolsAction {
 
     /// Show detected package managers
     Ecosystems,
+
+    /// Look up a tool's package names via Repology
+    Lookup {
+        /// Tool name to look up
+        tool: String,
+    },
+
+    /// Resolve all tool dependencies and write lockfile
+    Lock {
+        /// Path to the manifest file
+        #[arg(short, long, default_value = "nursery.toml")]
+        manifest: PathBuf,
+    },
 }
 
 #[derive(Subcommand)]
@@ -173,6 +186,8 @@ fn main() -> ExitCode {
             ToolsAction::Check { manifest } => cmd_tools_check(&manifest),
             ToolsAction::Install { manifest, dry_run } => cmd_tools_install(&manifest, dry_run),
             ToolsAction::Ecosystems => cmd_tools_ecosystems(),
+            ToolsAction::Lookup { tool } => cmd_tools_lookup(&tool),
+            ToolsAction::Lock { manifest } => cmd_tools_lock(&manifest),
         },
     }
 }
@@ -704,6 +719,135 @@ fn cmd_tools_install(manifest_path: &PathBuf, dry_run: bool) -> ExitCode {
         }
         Err(e) => {
             eprintln!("\nfailed to run command: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn cmd_tools_lookup(tool: &str) -> ExitCode {
+    let client = RepologyClient::new();
+
+    println!("Looking up '{tool}' via Repology...\n");
+
+    match client.lookup(tool) {
+        Ok(info) => {
+            if info.packages.is_empty() {
+                println!("No packages found for '{tool}'");
+                println!("hint: the project name on Repology may differ");
+                return ExitCode::SUCCESS;
+            }
+
+            if let Some(binname) = &info.binname {
+                println!("Binary: {binname}");
+            }
+
+            println!("Packages:");
+            for (ecosystem, pkg) in &info.packages {
+                println!("  {:<12} {} ({})", ecosystem.id(), pkg.name, pkg.version);
+            }
+
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("error: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn cmd_tools_lock(manifest_path: &PathBuf) -> ExitCode {
+    let manifest = match Manifest::from_path(manifest_path) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    if manifest.tool_deps.is_empty() {
+        println!("no tool dependencies to lock");
+        return ExitCode::SUCCESS;
+    }
+
+    let client = RepologyClient::new();
+    let mut lockfile = Lockfile::default();
+
+    // Determine which ecosystems to include
+    let detected = detect_ecosystems();
+    let ecosystems: Vec<Ecosystem> = if let Some(ref eco_list) = manifest.ecosystems {
+        eco_list
+            .iter()
+            .filter_map(|id| Ecosystem::from_id(id))
+            .collect()
+    } else {
+        detected.clone()
+    };
+
+    if ecosystems.is_empty() {
+        eprintln!("error: no ecosystems specified or detected");
+        return ExitCode::FAILURE;
+    }
+
+    println!("Resolving tools for ecosystems: {}",
+        ecosystems.iter().map(|e| e.id()).collect::<Vec<_>>().join(", "));
+    println!();
+
+    for (tool_name, dep) in &manifest.tool_deps {
+        print!("  {tool_name}... ");
+        io::stdout().flush().unwrap();
+
+        match client.lookup(tool_name) {
+            Ok(info) => {
+                let mut eco_packages = std::collections::BTreeMap::new();
+
+                for eco in &ecosystems {
+                    if let Some(pkg) = info.packages.get(eco) {
+                        eco_packages.insert(
+                            eco.id().to_string(),
+                            LockedPackage {
+                                package: pkg.name.clone(),
+                                version: pkg.version.clone(),
+                                hash: None,
+                                archive: None,
+                                nixpkgs: None,
+                            },
+                        );
+                    }
+                }
+
+                if eco_packages.is_empty() {
+                    println!("not found");
+                    continue;
+                }
+
+                println!("ok ({} ecosystem(s))", eco_packages.len());
+
+                lockfile.tools.insert(
+                    tool_name.clone(),
+                    LockedTool {
+                        source: format!("repology:{tool_name}"),
+                        constraint: dep.version.clone(),
+                        ecosystems: eco_packages,
+                    },
+                );
+            }
+            Err(e) => {
+                println!("error: {e}");
+            }
+        }
+    }
+
+    // Write lockfile
+    let lockfile_path = manifest_path.with_file_name("nursery.lock");
+
+    match lockfile.write(&lockfile_path) {
+        Ok(()) => {
+            println!("\nWrote {}", lockfile_path.display());
+            println!("Locked {} tool(s)", lockfile.tools.len());
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("error: failed to write lockfile: {e}");
             ExitCode::FAILURE
         }
     }

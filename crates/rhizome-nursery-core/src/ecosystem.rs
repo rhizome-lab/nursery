@@ -3,7 +3,7 @@
 use std::process::Command;
 
 /// Known package manager ecosystems.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Ecosystem {
     /// Arch Linux pacman
     Pacman,
