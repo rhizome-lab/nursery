@@ -111,6 +111,20 @@ From ecosystem-wide session analysis:
 
 **No magic.** The manifest should be readable by humans.
 
+## Commit Convention
+
+Use conventional commits: `type(scope): message`
+
+Types:
+- `feat` - New feature
+- `fix` - Bug fix
+- `refactor` - Code change that neither fixes a bug nor adds a feature
+- `docs` - Documentation only
+- `chore` - Maintenance (deps, CI, etc.)
+- `test` - Adding or updating tests
+
+Scope is optional but recommended for multi-crate repos.
+
 ## Negative Constraints
 
 Do not:
