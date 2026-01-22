@@ -133,6 +133,9 @@ Do not:
 - Create special cases - design to avoid them
 - Add tool execution to nursery - that's spore
 - Require tools at nursery runtime (only `--schema` is needed)
+- Use path dependencies in Cargo.toml - causes clippy to stash changes across repos
+- Use `--no-verify` - fix the issue or fix the hook
+- Assume tools are missing - check if `nix develop` is available for the right environment
 
 ## Crate Structure
 
