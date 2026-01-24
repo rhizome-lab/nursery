@@ -1,6 +1,6 @@
 //! Init command implementation.
 
-use rhi_myenv_seed::{SeedResolver, VariableResolver};
+use myenv_seed::{SeedResolver, VariableResolver};
 use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::PathBuf;

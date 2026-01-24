@@ -1,6 +1,6 @@
 //! Tools command implementations.
 
-use rhi_myenv_core::{
+use myenv_core::{
     Ecosystem, LockedPackage, LockedTool, Lockfile, Manifest, RepologyClient, ToolDep,
     detect_ecosystems, detect_primary_ecosystem, is_installed,
 };

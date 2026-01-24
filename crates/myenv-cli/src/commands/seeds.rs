@@ -1,6 +1,6 @@
 //! Seeds command implementation.
 
-use rhi_myenv_seed::SeedResolver;
+use myenv_seed::SeedResolver;
 use std::process::ExitCode;
 
 pub fn run() -> ExitCode {

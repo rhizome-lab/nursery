@@ -9,6 +9,6 @@ license = "MIT"
 repository = "https://github.com/rhi-zone/myenv"
 
 [workspace.dependencies]
-rhi-myenv-core = { path = "crates/rhi-myenv-core" }
-rhi-myenv-seed = { path = "crates/rhi-myenv-seed" }
-rhi-myenv-store = { path = "crates/rhi-myenv-store" }
+myenv-core = { path = "crates/myenv-core" }
+myenv-seed = { path = "crates/myenv-seed" }
+myenv-store = { path = "crates/myenv-store" }

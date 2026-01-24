@@ -1055,6 +1055,54 @@ dependencies = [
 ]
 
 [[package]]
+name = "myenv-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "myenv-core",
+ "myenv-seed",
+ "notify",
+]
+
+[[package]]
+name = "myenv-core"
+version = "0.1.0"
+dependencies = [
+ "dirs 5.0.1",
+ "jsonschema",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror 2.0.18",
+ "toml",
+ "ureq",
+]
+
+[[package]]
+name = "myenv-seed"
+version = "0.1.0"
+dependencies = [
+ "dirs 6.0.0",
+ "serde",
+ "thiserror 2.0.18",
+ "toml",
+]
+
+[[package]]
+name = "myenv-store"
+version = "0.1.0"
+dependencies = [
+ "dirs 5.0.1",
+ "flate2",
+ "sha2",
+ "tar",
+ "tempfile",
+ "thiserror 2.0.18",
+ "xz2",
+ "zip",
+]
+
+[[package]]
 name = "notify"
 version = "8.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1406,54 +1454,6 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
-]
-
-[[package]]
-name = "rhi-myenv-cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "notify",
- "rhi-myenv-core",
- "rhi-myenv-seed",
-]
-
-[[package]]
-name = "rhi-myenv-core"
-version = "0.1.0"
-dependencies = [
- "dirs 5.0.1",
- "jsonschema",
- "serde",
- "serde_json",
- "serde_yaml",
- "thiserror 2.0.18",
- "toml",
- "ureq",
-]
-
-[[package]]
-name = "rhi-myenv-seed"
-version = "0.1.0"
-dependencies = [
- "dirs 6.0.0",
- "serde",
- "thiserror 2.0.18",
- "toml",
-]
-
-[[package]]
-name = "rhi-myenv-store"
-version = "0.1.0"
-dependencies = [
- "dirs 5.0.1",
- "flate2",
- "sha2",
- "tar",
- "tempfile",
- "thiserror 2.0.18",
- "xz2",
- "zip",
 ]
 
 [[package]]

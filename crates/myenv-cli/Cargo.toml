@@ -1,5 +1,5 @@
 [package]
-name = "rhi-myenv-cli"
+name = "myenv-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -11,7 +11,7 @@ name = "myenv"
 path = "src/main.rs"
 
 [dependencies]
-rhi-myenv-core.workspace = true
-rhi-myenv-seed.workspace = true
+myenv-core.workspace = true
+myenv-seed.workspace = true
 clap = { version = "4", features = ["derive"] }
 notify = "8"

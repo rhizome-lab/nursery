@@ -1,6 +1,6 @@
 //! Config sync command implementations.
 
-use rhi_myenv_core::{CliSchemaProvider, Manifest, merge_to_manifest, pull_configs};
+use myenv_core::{CliSchemaProvider, Manifest, merge_to_manifest, pull_configs};
 use std::fs;
 use std::path::PathBuf;
 use std::process::ExitCode;

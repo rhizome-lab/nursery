@@ -1,9 +1,9 @@
 //! Generate command implementation.
 
-use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
-use rhi_myenv_core::{
+use myenv_core::{
     CliSchemaProvider, GenerateResult, Manifest, SchemaProvider, generate_configs, preview_configs,
 };
+use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::mpsc;
