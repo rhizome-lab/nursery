@@ -13,7 +13,7 @@ export default withMermaid(
         { text: 'Guide', link: '/introduction' },
         { text: 'Manifest', link: '/manifest' },
         { text: 'Seeds', link: '/seeds' },
-        { text: 'rhi', link: 'https://rhizome-lab.github.io/' },
+        { text: 'rhi', link: 'https://docs.rhi.zone/' },
       ],
 
       sidebar: [
