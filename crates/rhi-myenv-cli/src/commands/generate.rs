@@ -1,7 +1,7 @@
 //! Generate command implementation.
 
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
-use rhizome_nursery_core::{
+use rhi_myenv_core::{
     CliSchemaProvider, GenerateResult, Manifest, SchemaProvider, generate_configs, preview_configs,
 };
 use std::path::PathBuf;

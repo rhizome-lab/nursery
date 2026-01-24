@@ -1,6 +1,6 @@
 //! Init command implementation.
 
-use rhizome_nursery_seed::{SeedResolver, VariableResolver};
+use rhi_myenv_seed::{SeedResolver, VariableResolver};
 use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -19,7 +19,7 @@ pub fn run(
         Ok(s) => s,
         Err(e) => {
             eprintln!("error: {e}");
-            eprintln!("hint: run 'nursery seeds' to list available templates");
+            eprintln!("hint: run 'myenv seeds' to list available templates");
             return ExitCode::FAILURE;
         }
     };

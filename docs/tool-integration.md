@@ -1,10 +1,10 @@
 # Tool Integration Guide
 
-This guide explains how to make your tool work with Nursery.
+This guide explains how to make your tool work with myenv.
 
 ## Overview
 
-Nursery generates per-tool config files from a central `nursery.toml`. Tools integrate via one convention:
+myenv generates per-tool config files from a central `myenv.toml`. Tools integrate via one convention:
 
 **`<tool> --schema`** — Returns config metadata and JSON Schema
 
@@ -107,7 +107,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Output config schema for nursery
+    /// Output config schema for myenv
     Schema,
 }
 
@@ -229,7 +229,7 @@ func main() {
 
 ## Manifest Example
 
-With your tool integrated, users add it to `nursery.toml`:
+With your tool integrated, users add it to `myenv.toml`:
 
 ```toml
 [project]
@@ -245,10 +245,10 @@ verbose = true
 Then run:
 
 ```bash
-nursery generate
+myenv generate
 ```
 
-Nursery will:
+myenv will:
 1. Fetch schema via `mytool --schema`
 2. Validate the `[mytool]` section
 3. Write `.mytool/config.toml` in the correct format
@@ -257,7 +257,7 @@ Your tool just reads its config file as usual.
 
 ## Templating
 
-Nursery supports variable substitution in configs:
+myenv supports variable substitution in configs:
 
 ```toml
 [project]
@@ -277,7 +277,7 @@ Variables are expanded before writing the tool config.
 mytool --schema | jq .
 
 # Generate configs
-nursery generate
+myenv generate
 
 # Verify output
 cat .mytool/config.toml

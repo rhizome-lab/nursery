@@ -1,6 +1,6 @@
 //! Config sync command implementations.
 
-use rhizome_nursery_core::{CliSchemaProvider, Manifest, merge_to_manifest, pull_configs};
+use rhi_myenv_core::{CliSchemaProvider, Manifest, merge_to_manifest, pull_configs};
 use std::fs;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -16,7 +16,7 @@ pub fn pull(path: &PathBuf, tools: Vec<String>, dry_run: bool) -> ExitCode {
             Ok(m) => m.tool_configs.keys().cloned().collect(),
             Err(_) => {
                 eprintln!("error: no tools specified and no existing manifest");
-                eprintln!("hint: specify tools to pull, e.g., 'nursery config pull siphon dew'");
+                eprintln!("hint: specify tools to pull, e.g., 'myenv config pull siphon dew'");
                 return ExitCode::FAILURE;
             }
         }

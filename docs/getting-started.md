@@ -3,7 +3,7 @@
 ## Installation
 
 ```bash
-cargo install rhizome-nursery-cli
+cargo install rhizome-myenv-cli
 ```
 
 ## Create a Project
@@ -11,15 +11,15 @@ cargo install rhizome-nursery-cli
 Start from a seed:
 
 ```bash
-nursery new my-project --seed creation
+myenv new my-project --seed creation
 cd my-project
 ```
 
-This creates a new directory with a pre-configured `nursery.toml` and starter files.
+This creates a new directory with a pre-configured `myenv.toml` and starter files.
 
 ## The Manifest
 
-Open `nursery.toml` to see how tools are configured:
+Open `myenv.toml` to see how tools are configured:
 
 ```toml
 [project]
@@ -34,7 +34,7 @@ port = 8080
 ## Run
 
 ```bash
-nursery run
+myenv run
 ```
 
-Nursery reads the manifest, ensures dependencies are satisfied, and launches the appropriate tools.
+myenv reads the manifest, ensures dependencies are satisfied, and launches the appropriate tools.

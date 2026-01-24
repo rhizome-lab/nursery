@@ -2,8 +2,8 @@
 layout: home
 
 hero:
-  name: "Nursery"
-  text: "Rhizome Ecosystem Orchestrator"
+  name: "myenv"
+  text: "rhi Ecosystem Orchestrator"
   tagline: "One manifest to coordinate them all."
   actions:
     - theme: brand
@@ -15,7 +15,7 @@ hero:
 
 features:
   - title: rhizome.toml
-    details: One manifest file defines how all Rhizome tools compose for your project.
+    details: One manifest file defines how all rhi tools compose for your project.
   - title: Seeds
     details: Starter templates for archaeology, creation, and experimentation workflows.
   - title: Lazy Discovery

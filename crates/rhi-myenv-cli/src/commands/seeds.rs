@@ -1,6 +1,6 @@
 //! Seeds command implementation.
 
-use rhizome_nursery_seed::SeedResolver;
+use rhi_myenv_seed::SeedResolver;
 use std::process::ExitCode;
 
 pub fn run() -> ExitCode {

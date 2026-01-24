@@ -1,10 +1,10 @@
 # Introduction
 
-Nursery is the orchestration layer for the Rhizome ecosystem.
+myenv is the orchestration layer for the rhi ecosystem.
 
 ## The Problem
 
-The Rhizome ecosystem contains many tools:
+The rhi ecosystem contains many tools:
 - **Siphon** - Legacy software lifting
 - **Dew** - Minimal expression language
 - **Lotus** - Persistent world runtime
@@ -16,7 +16,7 @@ Each tool is useful on its own, but combining them requires understanding their 
 
 ## The Solution
 
-Instead of memorizing arguments for multiple tools, you write one `nursery.toml` manifest:
+Instead of memorizing arguments for multiple tools, you write one `myenv.toml` manifest:
 
 ```toml
 [project]
@@ -33,11 +33,11 @@ target = "web-wasm"
 port = 8080
 ```
 
-Nursery reads this manifest and coordinates the tools. You don't need to remember which tool runs first or what flags to pass.
+myenv reads this manifest and coordinates the tools. You don't need to remember which tool runs first or what flags to pass.
 
 ## Seeds
 
-To reduce the "where do I start?" friction, Nursery provides **Seeds**—pre-configured starter templates:
+To reduce the "where do I start?" friction, myenv provides **Seeds**—pre-configured starter templates:
 
 - **seed-archaeology** - For lifting legacy games (siphon → lotus)
 - **seed-creation** - For new Lotus projects from scratch
@@ -46,5 +46,5 @@ To reduce the "where do I start?" friction, Nursery provides **Seeds**—pre-con
 ## Next Steps
 
 - [Getting Started](/getting-started) - Install and create your first project
-- [Manifest Reference](/manifest) - Full `nursery.toml` specification
+- [Manifest Reference](/manifest) - Full `myenv.toml` specification
 - [Seeds](/seeds) - Available starter templates

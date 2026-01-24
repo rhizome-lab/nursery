@@ -1,11 +1,11 @@
-# Nursery Design
+# myenv Design
 
-Nursery is a **configuration manager** for the Rhizome ecosystem. It generates per-tool config files from a central `nursery.toml` manifest.
+myenv is a **configuration manager** for the rhi ecosystem. It generates per-tool config files from a central `myenv.toml` manifest.
 
 ## Core Principles
 
-1. **One source of truth** — `nursery.toml` defines all tool configs in one place
-2. **Invisible manifest** — Tools never read `nursery.toml` directly, only their generated native configs
+1. **One source of truth** — `myenv.toml` defines all tool configs in one place
+2. **Invisible manifest** — Tools never read `myenv.toml` directly, only their generated native configs
 3. **Tools stay dumb** — Tools just read their native config files, no special runtime behavior
 4. **Validation before generation** — Catch config errors before writing anything
 5. **Templating for DRY** — Share variables across tools, with optional Lua upgrade path
@@ -14,12 +14,12 @@ Nursery is a **configuration manager** for the Rhizome ecosystem. It generates p
 
 ```
 ┌─────────────────┐
-│  nursery.toml   │  ← Central manifest
+│  myenv.toml   │  ← Central manifest
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
-│     nursery     │  ← Validates & generates
+│     myenv     │  ← Validates & generates
 │    generate     │
 └────────┬────────┘
          │
@@ -88,13 +88,13 @@ Fields:
 
 ## CLI Commands
 
-### `nursery new <name> [--seed <template>]`
+### `myenv new <name> [--seed <template>]`
 
 Scaffold a new project from a seed template.
 
-### `nursery generate`
+### `myenv generate`
 
-Generate per-tool config files from `nursery.toml`.
+Generate per-tool config files from `myenv.toml`.
 
 1. Parse manifest
 2. Expand variables/templates
@@ -103,23 +103,23 @@ Generate per-tool config files from `nursery.toml`.
    - Validate config against schema
    - Write to `config_path` in correct format
 
-### `nursery validate`
+### `myenv validate`
 
 Validate manifest without generating files. Useful for CI.
 
-### `nursery seeds`
+### `myenv seeds`
 
 List available seed templates.
 
 ## Seeds
 
-Project templates stored in `~/.config/nursery/seeds/` or built-in.
+Project templates stored in `~/.config/myenv/seeds/` or built-in.
 
 ```
 my-seed/
   seed.toml       # metadata + variables
   template/       # files to scaffold
-    nursery.toml
+    myenv.toml
     src/
 ```
 
@@ -130,7 +130,7 @@ See [Seeds documentation](/seeds) for details.
 Variables are resolved with precedence (highest first):
 
 1. CLI `--var key=value`
-2. Global config `~/.config/nursery/config.toml`
+2. Global config `~/.config/myenv/config.toml`
 3. Seed defaults
 4. Inferred (git config, environment)
 
@@ -142,15 +142,15 @@ Future: Lua scripting for complex logic (via spore runtime).
 
 ## Non-Goals
 
-Nursery does **not**:
+myenv does **not**:
 
 - Run tools — That's spore's job
 - Manage tool execution order — That's spore's job
 - Install or version tools — Use your package manager
-- Replace tool CLIs — Tools work standalone, nursery is optional
+- Replace tool CLIs — Tools work standalone, myenv is optional
 
 ## Crate Structure
 
-- `rhizome-nursery-core` — Manifest parsing, validation, generation
-- `rhizome-nursery-cli` — CLI binary (`nursery`)
-- `rhizome-nursery-seed` — Template scaffolding
+- `rhizome-myenv-core` — Manifest parsing, validation, generation
+- `rhizome-myenv-cli` — CLI binary (`myenv`)
+- `rhizome-myenv-seed` — Template scaffolding

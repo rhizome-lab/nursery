@@ -1409,17 +1409,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "rhizome-nursery-cli"
+name = "rhi-myenv-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
  "notify",
- "rhizome-nursery-core",
- "rhizome-nursery-seed",
+ "rhi-myenv-core",
+ "rhi-myenv-seed",
 ]
 
 [[package]]
-name = "rhizome-nursery-core"
+name = "rhi-myenv-core"
 version = "0.1.0"
 dependencies = [
  "dirs 5.0.1",
@@ -1433,7 +1433,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rhizome-nursery-seed"
+name = "rhi-myenv-seed"
 version = "0.1.0"
 dependencies = [
  "dirs 6.0.0",
@@ -1443,7 +1443,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rhizome-nursery-store"
+name = "rhi-myenv-store"
 version = "0.1.0"
 dependencies = [
  "dirs 5.0.1",

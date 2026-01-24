@@ -1,23 +1,23 @@
-# Nursery
+# myenv
 
-Rhizome ecosystem configuration manager.
+rhi ecosystem configuration manager.
 
-Part of the [Rhizome](https://rhizome-lab.github.io) ecosystem.
+Part of the [rhi](https://rhi.zone) ecosystem.
 
 ## Overview
 
-Nursery generates per-tool config files from a central `nursery.toml` manifest. Tools never read `nursery.toml` directly - they only read their generated native configs.
+myenv generates per-tool config files from a central `myenv.toml` manifest. Tools never read `myenv.toml` directly - they only read their generated native configs.
 
 ```
-nursery.toml  →  nursery generate  →  .siphon/config.toml
-                                  →  .dew/config.toml
-                                  →  .spore/config.toml
+myenv.toml  →  myenv generate  →  .siphon/config.toml
+                               →  .dew/config.toml
+                               →  .spore/config.toml
 ```
 
 ## The Manifest
 
 ```toml
-# nursery.toml
+# myenv.toml
 [project]
 name = "my-project"
 version = "0.1.0"

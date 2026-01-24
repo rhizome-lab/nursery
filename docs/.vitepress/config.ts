@@ -3,17 +3,17 @@ import { withMermaid } from 'vitepress-plugin-mermaid'
 
 export default withMermaid(
   defineConfig({
-    title: 'Nursery',
-    description: 'Rhizome ecosystem orchestrator',
+    title: 'myenv',
+    description: 'rhi ecosystem orchestrator',
 
-    base: '/nursery/',
+    base: '/myenv/',
 
     themeConfig: {
       nav: [
         { text: 'Guide', link: '/introduction' },
         { text: 'Manifest', link: '/manifest' },
         { text: 'Seeds', link: '/seeds' },
-        { text: 'Rhizome', link: 'https://rhizome-lab.github.io/' },
+        { text: 'rhi', link: 'https://rhizome-lab.github.io/' },
       ],
 
       sidebar: [
@@ -36,7 +36,7 @@ export default withMermaid(
       ],
 
       socialLinks: [
-        { icon: 'github', link: 'https://github.com/rhizome-lab/nursery' }
+        { icon: 'github', link: 'https://github.com/rhizome-lab/myenv' }
       ],
 
       search: {
@@ -44,7 +44,7 @@ export default withMermaid(
       },
 
       editLink: {
-        pattern: 'https://github.com/rhizome-lab/nursery/edit/master/docs/:path',
+        pattern: 'https://github.com/rhizome-lab/myenv/edit/master/docs/:path',
         text: 'Edit this page on GitHub'
       },
     },

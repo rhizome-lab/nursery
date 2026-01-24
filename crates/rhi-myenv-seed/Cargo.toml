@@ -1,10 +1,10 @@
 [package]
-name = "rhizome-nursery-seed"
+name = "rhi-myenv-seed"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Project scaffolding templates for Nursery"
+description = "Project scaffolding templates for myenv"
 
 [features]
 default = ["infer"]

@@ -1,6 +1,6 @@
 # Manifest Reference
 
-The `nursery.toml` manifest is the single source of truth for tool configuration. Running `nursery generate` creates per-tool config files from this central manifest.
+The `myenv.toml` manifest is the single source of truth for tool configuration. Running `myenv generate` creates per-tool config files from this central manifest.
 
 ## Project Section
 
@@ -37,7 +37,7 @@ output = "{{build_dir}}/web"
 
 ## Tool Sections
 
-Each tool gets its own section. Nursery validates these against the tool's schema and writes them to the tool's config file.
+Each tool gets its own section. myenv validates these against the tool's schema and writes them to the tool's config file.
 
 ```toml
 [siphon]
@@ -56,7 +56,7 @@ assets = "{{assets}}/processed"
 port = 8080
 ```
 
-Running `nursery generate` creates:
+Running `myenv generate` creates:
 - `.siphon/config.toml`
 - `.dew/config.toml`
 - `.lotus/config.toml`
@@ -65,7 +65,7 @@ The exact paths and formats are determined by each tool's `--schema` response.
 
 ## Tool Integration
 
-Tools tell Nursery where their config lives via `<tool> --schema`:
+Tools tell myenv where their config lives via `<tool> --schema`:
 
 ```json
 {

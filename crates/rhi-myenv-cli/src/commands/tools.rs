@@ -1,6 +1,6 @@
 //! Tools command implementations.
 
-use rhizome_nursery_core::{
+use rhi_myenv_core::{
     Ecosystem, LockedPackage, LockedTool, Lockfile, Manifest, RepologyClient, ToolDep,
     detect_ecosystems, detect_primary_ecosystem, is_installed,
 };
@@ -47,7 +47,7 @@ pub fn check(manifest_path: &PathBuf, include_dev: bool, include_build: bool) ->
     };
 
     // Try to load lockfile for package names
-    let lockfile_path = manifest_path.with_file_name("nursery.lock");
+    let lockfile_path = manifest_path.with_file_name("myenv.lock");
     let lockfile = Lockfile::load_or_default(&lockfile_path);
 
     let mut all_ok = true;
@@ -110,7 +110,7 @@ pub fn check(manifest_path: &PathBuf, include_dev: bool, include_build: bool) ->
         ExitCode::SUCCESS
     } else {
         println!("\nmissing {} required dependency(ies)", missing.len());
-        println!("run 'nursery tools install' to install them");
+        println!("run 'myenv tools install' to install them");
         ExitCode::FAILURE
     }
 }
@@ -138,7 +138,7 @@ pub fn install(
     };
 
     // Try to load lockfile for package names
-    let lockfile_path = manifest_path.with_file_name("nursery.lock");
+    let lockfile_path = manifest_path.with_file_name("myenv.lock");
     let lockfile = Lockfile::load_or_default(&lockfile_path);
 
     // Helper to find missing packages in a dep set
@@ -418,7 +418,7 @@ pub fn lock(manifest_path: &PathBuf) -> ExitCode {
     lock_deps(&manifest.build_deps, "build-deps");
 
     // Write lockfile
-    let lockfile_path = manifest_path.with_file_name("nursery.lock");
+    let lockfile_path = manifest_path.with_file_name("myenv.lock");
 
     match lockfile.write(&lockfile_path) {
         Ok(()) => {

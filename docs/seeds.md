@@ -1,6 +1,6 @@
 # Seeds
 
-Seeds are starter templates for common Rhizome workflows.
+Seeds are starter templates for common rhi workflows.
 
 ## Available Seeds
 
@@ -9,7 +9,7 @@ Seeds are starter templates for common Rhizome workflows.
 For lifting legacy games from obsolete runtimes.
 
 ```bash
-nursery new my-remake --seed archaeology
+myenv new my-remake --seed archaeology
 ```
 
 Includes:
@@ -22,7 +22,7 @@ Includes:
 For new Lotus projects from scratch.
 
 ```bash
-nursery new my-game --seed creation
+myenv new my-game --seed creation
 ```
 
 Includes:
@@ -35,14 +35,14 @@ Includes:
 Full ecosystem sandbox with all tools configured.
 
 ```bash
-nursery new my-lab --seed lab
+myenv new my-lab --seed lab
 ```
 
 Includes:
-- All Rhizome tools pre-configured
+- All rhi tools pre-configured
 - Example pipelines
 - Documentation stubs
 
 ## Custom Seeds
 
-Create your own seeds by placing a `rhizome.toml` template in `~/.config/nursery/seeds/`.
+Create your own seeds by placing a `rhizome.toml` template in `~/.config/myenv/seeds/`.

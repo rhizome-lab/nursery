@@ -78,7 +78,7 @@ impl RepologyClient {
     pub fn new() -> Self {
         let cache_dir = dirs::cache_dir()
             .unwrap_or_else(|| PathBuf::from(".cache"))
-            .join("nursery")
+            .join("myenv")
             .join("repology");
 
         Self {
@@ -121,7 +121,7 @@ impl RepologyClient {
         let response = ureq::get(&url)
             .set(
                 "User-Agent",
-                "nursery/0.1 (https://github.com/rhizome-lab/nursery)",
+                "myenv/0.1 (https://github.com/rhi-zone/myenv)",
             )
             .call()
             .map_err(|e| RepologyError::Http(e.to_string()))?;

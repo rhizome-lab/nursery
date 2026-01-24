@@ -1,10 +1,10 @@
 [package]
-name = "rhizome-nursery-core"
+name = "rhi-myenv-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Core manifest parsing and schema validation for Nursery"
+description = "Core manifest parsing and schema validation for myenv"
 
 [dependencies]
 dirs = "5"

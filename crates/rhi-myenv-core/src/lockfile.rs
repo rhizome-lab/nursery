@@ -1,4 +1,4 @@
-//! Lockfile parsing and generation for `nursery.lock`.
+//! Lockfile parsing and generation for `myenv.lock`.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

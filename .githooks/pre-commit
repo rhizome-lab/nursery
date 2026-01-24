@@ -2,9 +2,9 @@
 set -e
 
 echo "Running cargo fmt check..."
-cargo fmt --all -- --check
+nix develop --command cargo fmt --all -- --check
 
 echo "Running cargo clippy..."
-cargo clippy --all-targets --all-features -- -D warnings
+nix develop --command cargo clippy --all-targets --all-features -- -D warnings
 
 echo "Pre-commit checks passed!"

@@ -1,10 +1,10 @@
 [package]
-name = "rhizome-nursery-store"
+name = "rhi-myenv-store"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Content-addressed package store for Nursery"
+description = "Content-addressed package store for myenv"
 
 [dependencies]
 dirs = "5"

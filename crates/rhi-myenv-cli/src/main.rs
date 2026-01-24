@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 #[derive(Parser)]
-#[command(name = "nursery")]
-#[command(about = "A configuration manager for the Rhizome ecosystem")]
+#[command(name = "myenv")]
+#[command(about = "A configuration manager for the rhi ecosystem")]
 struct Cli {
     #[command(subcommand)]
     command: Command,

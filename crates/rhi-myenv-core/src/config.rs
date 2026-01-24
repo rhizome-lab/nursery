@@ -1,4 +1,4 @@
-//! User configuration from ~/.config/nursery/config.toml
+//! User configuration from ~/.config/myenv/config.toml
 
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -43,7 +43,7 @@ pub enum ToolSource {
 }
 
 impl UserConfig {
-    /// Load user config from default path (~/.config/nursery/config.toml).
+    /// Load user config from default path (~/.config/myenv/config.toml).
     pub fn load() -> Self {
         Self::from_path(Self::default_path()).unwrap_or_default()
     }
@@ -57,7 +57,7 @@ impl UserConfig {
 
     /// Get the default config path.
     pub fn default_path() -> Option<PathBuf> {
-        dirs::config_dir().map(|d| d.join("nursery").join("config.toml"))
+        dirs::config_dir().map(|d| d.join("myenv").join("config.toml"))
     }
 }
 

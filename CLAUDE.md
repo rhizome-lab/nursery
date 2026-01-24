@@ -4,16 +4,16 @@ Behavioral rules for Claude Code in this repository.
 
 ## Overview
 
-Nursery is a **configuration manager** for the Rhizome ecosystem. It generates per-tool config files from a central `nursery.toml` manifest.
+myenv is a **configuration manager** for the rhi ecosystem. It generates per-tool config files from a central `myenv.toml` manifest.
 
-### What Nursery Does
+### What myenv Does
 
-- **Generate** — `nursery.toml` → per-tool native configs
+- **Generate** — `myenv.toml` → per-tool native configs
 - **Validate** — Check configs against tool schemas before writing
 - **Template** — Variable substitution, shared logic across tools
 - **Scaffold** — Create new projects from seed templates
 
-### What Nursery Does NOT Do
+### What myenv Does NOT Do
 
 - **Run tools** — That's spore's job
 - **Manage tool execution order** — That's spore's job
@@ -21,27 +21,27 @@ Nursery is a **configuration manager** for the Rhizome ecosystem. It generates p
 
 ### Key Concepts
 
-- **`nursery.toml`**: Central manifest defining all tool configs (invisible to tools at runtime)
+- **`myenv.toml`**: Central manifest defining all tool configs (invisible to tools at runtime)
 - **`<tool> --schema`**: Convention for tools to expose their config schema
 - **Seeds**: Starter templates for common project types
 - **Variables**: Shared values across tool configs
 
 ### The Invisible Manifest
 
-`nursery.toml` is the **source of truth** but is **invisible at runtime**. Tools never read it directly - they only read their generated native configs.
+`myenv.toml` is the **source of truth** but is **invisible at runtime**. Tools never read it directly - they only read their generated native configs.
 
 ```
-nursery.toml  →  nursery generate  →  .spore/config.toml
-                                  →  .siphon/config.toml
-                                  →  .dew/config.toml
+myenv.toml  →  myenv generate  →  .spore/config.toml
+                               →  .siphon/config.toml
+                               →  .dew/config.toml
 ```
 
-This keeps tools simple and decoupled from nursery.
+This keeps tools simple and decoupled from myenv.
 
 ### The Manifest
 
 ```toml
-# nursery.toml
+# myenv.toml
 [project]
 name = "my-project"
 version = "0.1.0"
@@ -59,7 +59,7 @@ input = "{{assets}}/raw"
 output = "{{assets}}/processed"
 ```
 
-Running `nursery generate` creates:
+Running `myenv generate` creates:
 - `.siphon/config.toml`
 - `.dew/config.toml`
 
@@ -101,11 +101,11 @@ From ecosystem-wide session analysis:
 
 ## Design Principles
 
-**Config generation, not orchestration.** Nursery generates configs, spore runs tools.
+**Config generation, not orchestration.** myenv generates configs, spore runs tools.
 
-**Tools stay dumb.** No special nursery conventions at runtime. Tools just read their config files.
+**Tools stay dumb.** No special myenv conventions at runtime. Tools just read their config files.
 
-**One source of truth.** `nursery.toml` is the single place to configure all tools.
+**One source of truth.** `myenv.toml` is the single place to configure all tools.
 
 **Validate before write.** Catch errors before generating configs.
 
@@ -131,15 +131,16 @@ Do not:
 - Announce actions ("I will now...") - just do them
 - Leave work uncommitted
 - Create special cases - design to avoid them
-- Add tool execution to nursery - that's spore
-- Require tools at nursery runtime (only `--schema` is needed)
+- Add tool execution to myenv - that's spore
+- Require tools at myenv runtime (only `--schema` is needed)
 - Use path dependencies in Cargo.toml - causes clippy to stash changes across repos
 - Use `--no-verify` - fix the issue or fix the hook
 - Assume tools are missing - check if `nix develop` is available for the right environment
 
 ## Crate Structure
 
-All crates use the `rhizome-nursery-` prefix:
-- `rhizome-nursery-core` - Manifest parsing, validation, config generation
-- `rhizome-nursery-cli` - CLI binary (named `nursery`)
-- `rhizome-nursery-seed` - Template scaffolding
+All crates use the `rhi-myenv-` prefix:
+- `rhi-myenv-core` - Manifest parsing, validation, config generation
+- `rhi-myenv-cli` - CLI binary (named `myenv`)
+- `rhi-myenv-seed` - Template scaffolding
+- `rhi-myenv-store` - Content-addressed package store

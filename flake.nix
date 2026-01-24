@@ -1,5 +1,5 @@
 {
-  description = "nursery - rhizome ecosystem configuration manager";
+  description = "myenv - rhi ecosystem configuration manager";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -13,7 +13,7 @@
       in
       {
         packages.default = pkgs.rustPlatform.buildRustPackage {
-          pname = "nursery";
+          pname = "myenv";
           version = "0.1.0";
           src = ./.;
           cargoLock.lockFile = ./Cargo.lock;
