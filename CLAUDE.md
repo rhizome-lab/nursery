@@ -111,6 +111,14 @@ From ecosystem-wide session analysis:
 
 **No magic.** The manifest should be readable by humans.
 
+**Unify, don't multiply.** One interface for multiple cases > separate interfaces. Plugin systems > hardcoded switches.
+
+**Simplicity over cleverness.** HashMap > inventory crate. OnceLock > lazy_static. Functions > traits until you need the trait. Use ecosystem tooling over hand-rolling.
+
+**Explicit over implicit.** Log when skipping. Show what's at stake before refusing.
+
+**Separate niche from shared.** Don't bloat shared config with feature-specific data. Use separate files for specialized data.
+
 ## Commit Convention
 
 Use conventional commits: `type(scope): message`
